@@ -1,0 +1,10 @@
+{
+  "name": "weevcrafts-ui",
+  "private": true,
+  "scripts": {
+    "css:build": "tailwindcss -i ./web/assets/css/source.css -o ./web/assets/css/app.css --minify"
+  },
+  "devDependencies": {
+    "tailwindcss": "3.4.17"
+  }
+}

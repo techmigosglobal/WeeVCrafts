@@ -98,3 +98,21 @@ PostgreSQL integration coverage can be run against the local Compose database:
 DATABASE_URL='postgres://wecratfs:wecratfs@localhost:5432/wecratfs?sslmode=disable' \
   go test -v ./internal/adapters/postgres -run 'Integration|WithinTransaction|PersistencePrimitives'
 ```
+
+## WeeVCrafts UI-first preview
+
+The customer storefront milestone is available as an isolated templated Go
+preview. It does not connect to PostgreSQL, payments, shipping, or account
+services:
+
+```sh
+make templ-generate
+make web-mock                 # http://localhost:8090
+```
+
+`cmd/web` serves the responsive customer routes using a per-browser fixture
+session. HTMX mutation targets live under `/ui/*` (with stable
+`/ui/fragments/*` aliases), and Alpine is limited to local menus, galleries,
+tabs, and selectors. The existing `cmd/res2` backend composition and
+`Dockerfile` remain available for the later live integration milestone;
+`Dockerfile.web` packages this UI preview independently.

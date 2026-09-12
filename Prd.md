@@ -1,4 +1,3 @@
-
 Yes. We should now freeze a **Master PRD for res2** and use it as the source of truth for development, QA, security, UI/UX, backend architecture, and future mobile work.
 
 One compliance note: live web lookup is disabled in this chat right now, so I can’t verify any DPDP Rules, notifications, or amendments issued after my available legal knowledge. The privacy section below is therefore based on the **Digital Personal Data Protection Act, 2023 baseline** and should be reviewed against the latest rules/counsel before production launch.
@@ -33,39 +32,41 @@ It is:
 # 2. Locked technology architecture — `res2`
 
 ```text
-                           INTERNET
-                              │
-                              ▼
-                    ┌────────────────────┐
-                    │     CLOUDFLARE     │
-                    │ CDN • DNS • WAF    │
-                    │ TLS • Rate Control │
-                    └──────────┬─────────┘
-                               │
-                               ▼
-                         ┌───────────┐
-                         │ GO SERVER │
-                         └─────┬─────┘
-                               │
-              ┌────────────────┴────────────────┐
-              │                                 │
-              ▼                                 ▼
-       Web Presentation                     /api/v1
-              │                                 │
-       Go HTML Templates                        │
-              │                                 │
-   HTMX + Tailwind CSS + Alpine.js            Flutter
-                                           Android / iOS
-                                               V2
-              │                                 │
-              └────────────────┬────────────────┘
-                               ▼
-                       COMMERCE CORE
-                               │
-         ┌────────────┬────────┼────────┬────────────┐
-         ▼            ▼        ▼        ▼            ▼
-    PostgreSQL      Redis   Meilisearch S3        Razorpay
-    Source Truth    Cache      Search   Storage    Payments
+                         USERS
+                           │
+                           ▼
+                    CLOUDFLARE
+            DNS + CDN + SSL + DDoS + Cache
+                  + Turnstile
+                           │
+             ┌─────────────┴─────────────┐
+             │                           │
+       Cached public pages         Dynamic requests
+             │                           │
+             └─────────────┬─────────────┘
+                           ▼
+                  HOSTINGER / VPS
+                           │
+                         Caddy
+                           │
+                 ┌─────────┴─────────┐
+                 │                   │
+              Go App              Go Worker
+       HTMX + templ + REST API
+                 │                   │
+                 └─────────┬─────────┘
+                           │
+                ┌──────────┼──────────┐
+                ▼          ▼          ▼
+            PostgreSQL   Valkey    Cloudflare R2
+                                      │
+                              Images / Documents
+                           Public + Private Buckets
+
+                External integrations
+                ├── Razorpay / Route
+                ├── PayPal
+                └── Shiprocket
 ```
 
 ---

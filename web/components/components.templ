@@ -1,0 +1,32 @@
+package components
+
+import "github.com/wecratfs/commerce/internal/web/viewmodels"
+
+templ Header(p viewmodels.CustomerPage) {
+  <div class="preview-bar">UI preview · sample data · no real checkout or account actions</div>
+  <div class="utility-bar"><span>Handmade Today. A Kinder Tomorrow. <span class="leaf">◆</span></span><span class="utility-links">Free shipping on orders above ₹999 <i></i> International Shipping <i></i> Support</span></div>
+  <header class="site-header" x-data="{menu:false}">
+    <div class="header-main container">
+      <button class="icon-button menu-toggle" type="button" aria-label="Open menu" @click="menu=!menu">☰</button>
+      <a class="wordmark" href="/" aria-label="WeeVCrafts home"><span class="wordmark-mark">◈</span><span><strong>WeeVCrafts</strong><small>Crafted by India. Cherished Everywhere.</small></span></a>
+      <button class="location" type="button" aria-label="Delivery location"><span>⌖</span><small>Deliver to<br/><b>Bengaluru, Karnataka⌄</b></small></button>
+      <form class="global-search" method="get" action="/search" hx-get="/search" hx-select="#page" hx-target="#page" hx-push-url="true"><label class="sr-only" for="global-search">Search products</label><input id="global-search" name="q" value={ p.Query } placeholder="Search for sarees, home decor, gifts and more..."/><button type="submit" aria-label="Search">⌕</button></form>
+      <nav class="header-actions" aria-label="Account actions"><a href="/account">♙<span>Account</span></a><a href="/wishlist">♡<span>Wishlist<em>{ p.WishlistCount }</em></span></a><a href="/cart" id="cart-count">🛒<span>Cart<em>{ p.CartCount }</em></span></a></nav>
+    </div>
+    <div class="nav-row container"><button class="mobile-menu-button" type="button" @click="menu=!menu">Categories⌄</button><nav class="primary-nav" aria-label="Primary"><a href="/categories">Categories⌄</a><a href="/products?category=offers">Offers</a><a href="/makers/mithila-arts">Makers</a><a href="/seller">Sell on WeeVCrafts</a></nav><nav class="secondary-nav" aria-label="Secondary"><a href="/account">Our Story</a><a href="/orders">Track Order</a><a href="/returns">Help</a></nav></div>
+    <div class="mobile-menu" x-show="menu" x-cloak @click.outside="menu=false"><a href="/categories">Categories</a><a href="/products?category=offers">Offers</a><a href="/makers/mithila-arts">Makers</a><a href="/account">Account</a><a href="/orders">Track Order</a></div>
+  </header>
+}
+
+templ Footer(p viewmodels.CustomerPage) {
+  <section class="trust-strip"><div><b>Trusted by <span>1 Lakh+</span></b><small>happy customers</small></div><div>☆ <b>4.8/5</b><small>Average rating</small></div><div>♧ <b>10,000+</b><small>Artisans supported</small></div><div>♢ <b>Secure Payments</b><small>100% safe and trusted</small></div><div>⌁ <b>Easy Returns</b><small>Hassle-free shopping</small></div><div>◎ <b>Global Shipping</b><small>To 50+ countries</small></div></section>
+  <footer class="site-footer"><div class="container footer-grid"><div class="footer-brand"><a class="wordmark inverse" href="/"><span class="wordmark-mark">◈</span><span><strong>WeeVCrafts</strong><small>Crafted by India. Cherished Everywhere.</small></span></a><p>A marketplace for Indian arts, crafts and sarees.<br/>Supporting artisans. Preserving traditions.<br/>Building a brighter, more inclusive tomorrow.</p><div class="socials">◎　●　▶　◉　in</div></div><div><h3>Shop</h3><a href="/categories">All Categories</a><a href="/products?category=arts">Arts</a><a href="/products?category=crafts">Crafts</a><a href="/products?category=sarees">Sarees</a><a href="/products?category=offers">Offers</a><a href="/products">New Arrivals</a></div><div><h3>Help</h3><a href="/orders">Track Order</a><a href="/returns">Returns &amp; Refunds</a><a href="/shipping">Shipping Info</a><a href="/size-guide">Size Guide</a><a href="/faq">FAQs</a><a href="/contact">Contact Us</a></div><div><h3>About</h3><a href="/our-story">Our Story</a><a href="/makers/mithila-arts">Makers</a><a href="/sustainability">Sustainability</a><a href="/press">Press</a><a href="/careers">Careers</a><a href="/seller">Sell on WeeVCrafts</a></div><div class="newsletter"><h3>Join our community</h3><p>Get updates on new arrivals, offers and maker stories.</p><form><input aria-label="Email address" placeholder="Enter your email address" type="email"/><button aria-label="Subscribe" type="submit">→</button></form><label><input type="checkbox"/> I agree to receive updates from WeeVCrafts</label><small>Made with <span>♥</span> in India 🇮🇳　| A more handmade tomorrow ◆</small></div></div><div class="container footer-bottom"><span>© 2024 WeeVCrafts. All rights reserved.</span><span>Terms &amp; Conditions　|　Privacy Policy　|　Cookie Policy</span></div></footer>
+}
+
+templ ProductCard(product viewmodels.Product, showAction bool) {
+  <article class="product-card" data-product={ product.Slug } data-action={ showAction }><div class="product-media"><img src={ product.ImageURL } alt={ product.Name } loading="lazy"/><button class="heart" type="button" aria-label={ "Save " + product.Name } hx-post={ "/ui/wishlist/" + product.Slug } hx-target="closest article" hx-swap="outerHTML">♡</button><span class="badge">{ product.Badge }</span></div><div class="product-copy"><h3><a href={ "/products/" + product.Slug }>{ product.Name }</a></h3><p>By { product.Seller }</p><div class="rating"><span>★</span> { product.Rating } ({ product.Reviews })</div><div class="price"><strong>{ product.Price }</strong><del>{ product.CompareAt }</del><mark>20% OFF</mark></div><button class="outline-button add-button" type="button" hx-post={ "/ui/cart/" + product.Slug } hx-select="#page" hx-target="#page">🛒 Add to Cart</button></div></article>
+}
+
+templ CategoryCard(category viewmodels.Category) {
+  <a class="category-card" href={ "/products?category=" + category.Slug }><img src={ category.ImageURL } alt=""/><span><strong>{ category.Name }</strong><small>{ category.Description }</small><b>Explore { category.Name } →</b></span></a>
+}

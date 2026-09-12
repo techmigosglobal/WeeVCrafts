@@ -1,0 +1,153 @@
+package pages
+
+import (
+  "github.com/wecratfs/commerce/internal/web/viewmodels"
+  "github.com/wecratfs/commerce/web/components"
+)
+
+templ Document(p viewmodels.CustomerPage) {
+  <!doctype html>
+  <html lang="en">
+    <head>
+      <meta charset="utf-8"/>
+      <meta name="viewport" content="width=device-width, initial-scale=1"/>
+      <meta name="description" content={ p.Description }/>
+      <meta name="robots" content="noindex,nofollow"/>
+      <title>{ p.Title } · WeeVCrafts</title>
+      <link rel="stylesheet" href="/assets/css/app.css"/>
+      <link rel="stylesheet" href="/assets/css/theme.css"/>
+      <style>[x-cloak]{display:none!important}</style>
+      <script defer src="/assets/js/htmx.min.js"></script>
+      <script defer src="/assets/js/alpine.min.js"></script>
+    </head>
+    <body>
+      @components.Header(p)
+      <main id="page">{ children... }</main>
+      @components.Footer(p)
+    </body>
+  </html>
+}
+
+templ Breadcrumb(items ...string) {
+  <nav class="breadcrumb" aria-label="Breadcrumb">
+    for i, item := range items {
+      if i > 0 {
+        <span>›</span>
+      }
+      <a href="#">{ item }</a>
+    }
+  </nav>
+}
+
+templ Home(p viewmodels.CustomerPage) {
+  @Document(p) {
+    <section class="hero container"><div class="hero-copy"><p class="eyebrow">HANDCRAFTED. ROOTED IN INDIA.</p><h1>Indian Arts, Crafts<br/>and Sarees for a<br/><em>More Beautiful Tomorrow</em></h1><p>Discover authentic handmade creations from Indian artisans. Timeless traditions. Modern homes. A kinder world.</p><a class="primary-button" href="/categories">Shop Our Collections <span>→</span></a><div class="hero-proof"><span>♧ Handmade with Love</span><span>♧ Made in India</span><span>♧ Supports 10,000+ artisans</span></div></div><div class="hero-image"><img src="/assets/images/mock/hero.webp" alt="Artisan creating a traditional saree"/><span class="hero-note">Traditions<br/>live on<br/>here →</span></div><div class="hero-aside"><span>More<br/>than products.<br/><b>Brighter<br/>futures.</b></span><i>◆</i></div></section>
+    <section class="container category-rail"><a class="category-card" href="/products?category=arts"><img src="/assets/images/mock/painting.webp" alt=""/><span><strong>Arts</strong><small>Paintings, Sculptures, Traditional Art &amp; More</small><b>Explore Arts →</b></span></a><a class="category-card" href="/products?category=crafts"><img src="/assets/images/mock/box.webp" alt=""/><span><strong>Crafts</strong><small>Home Decor, Handicrafts, Lifestyle &amp; Gifts</small><b>Explore Crafts →</b></span></a><a class="category-card" href="/products?category=sarees"><img src="/assets/images/mock/saree-maroon.webp" alt=""/><span><strong>Sarees</strong><small>Handloom, Heritage &amp; Contemporary</small><b>Explore Sarees →</b></span></a></section>
+    <section class="container offers-rail"><div><span class="offer-icon">%</span><b>Festive Offers<br/><strong>Upto 40% Off</strong></b><small>Celebrate handmade this season</small></div><div><span class="offer-icon">♧</span><b>Gifts with Meaning</b><small>Thoughtful. Unique. Indian.</small></div><div><span class="offer-icon">✈</span><b>International Shipping</b><small>Indian craftsmanship, now global.</small></div></section>
+    <section class="container section"><div class="section-head"><div><h2>Trending Now</h2><p>Loved by our community</p></div><a href="/products">View All →</a></div><div class="product-grid">@components.ProductCard(p.Products[0], true) @components.ProductCard(p.Products[1], true) @components.ProductCard(p.Products[2], true) @components.ProductCard(p.Products[3], true) @components.ProductCard(p.Products[4], true)</div></section>
+    <section class="container section"><div class="section-head"><div><h2>Featured Sellers</h2><p>Meet the makers behind the magic</p></div><a href="/makers/mithila-arts">View All →</a></div><div class="seller-row"><a class="seller-chip" href="/makers/mithila-arts"><img src="/assets/images/mock/painting.webp" alt=""/><span><b>Mithila Arts</b><small>Madhubani, Bihar</small><em>★ 4.8 (124 products)</em></span></a><a class="seller-chip" href="/makers/clay-and-co"><img src="/assets/images/mock/mugs.webp" alt=""/><span><b>Clay &amp; Co.</b><small>Khurja, Uttar Pradesh</small><em>★ 4.6 (89 products)</em></span></a><a class="seller-chip" href="/makers/weavers-touch"><img src="/assets/images/mock/saree-blue.webp" alt=""/><span><b>Weaver's Touch</b><small>Maheshwar, Madhya Pradesh</small><em>★ 4.7 (142 products)</em></span></a></div></section>
+    <section class="container story-grid"><a class="story-card global" href="/products"><img src="/assets/images/mock/global.webp" alt="Indian craft travelling around the world"/><span><h2>From Indian Hands<br/>to Global Homes</h2><p>We ship worldwide</p><b>Shop International →</b></span></a><a class="story-card maker" href="/makers/mithila-arts"><img src="/assets/images/mock/maker.webp" alt="Artisan painting by hand"/><span><h2>Maker Stories</h2><p>“My craft is my prayer.”</p><b>Watch Stories →</b></span></a><div class="story-card promise"><h2>Sustainable. Meaningful. Together.</h2><p>◉ Supports Artisans　 ◉ Eco-Friendly Choices<br/>◉ Preserves Heritage　 ◉ Builds Stronger Communities</p></div></section>
+  }
+}
+
+templ Categories(p viewmodels.CustomerPage) {
+  @Document(p) {
+    <section class="container page-intro">@Breadcrumb("Home", "Categories")<h1>Explore Categories</h1><p>Discover authentic Indian arts, crafts and sarees across regions, crafted by skilled artisans.</p></section>
+    <section class="container category-layout"><aside class="category-sidebar"><h2>Browse</h2><a class="active" href="/categories">♧　All Categories　›</a><a href="/products?category=arts">♧　Arts　›</a><a href="/products?category=crafts">♧　Crafts　›</a><a href="/products?category=sarees">♧　Sarees　›</a><a href="/products?category=home-living">♧　Home &amp; Living　›</a><a href="/products?category=fashion">♧　Fashion &amp; Accessories　›</a><a href="/products?category=gifts">♧　Gifts &amp; Occasions　›</a><div class="sidebar-promise"><h3>Support<br/>Indian Artisans</h3><p>Choose handmade.<br/>Choose a brighter tomorrow.</p><a href="/our-story">Learn More →</a></div></aside><div><div class="category-banner"><img src="/assets/images/mock/hero.webp" alt=""/><span><h2>India’s<br/>Craft Traditions<br/>One Beautiful Place</h2><p>From timeless arts to everyday treasures, explore categories crafted with love.</p><a class="primary-button" href="/products">Shop All Collections →</a></span></div><h2 class="subheading">Shop by Main Categories</h2><div class="category-grid">@components.CategoryCard(p.Categories[0]) @components.CategoryCard(p.Categories[1]) @components.CategoryCard(p.Categories[2])</div><h2 class="subheading">Featured Collections</h2><div class="collection-grid">@components.CategoryCard(p.Categories[3]) @components.CategoryCard(p.Categories[4]) @components.CategoryCard(p.Categories[5])</div></div></section>
+  }
+}
+
+templ Listing(p viewmodels.CustomerPage) {
+  @Document(p) {
+    <section class="container listing-head">@Breadcrumb("Home", "Search", p.Query)<div class="listing-banner"><div><h1>{ p.Category }</h1><p>Timeless weaves. Enduring stories. Handwoven by India’s artisans.</p></div><img src="/assets/images/mock/saree-banner.webp" alt=""/></div></section>
+    <section class="container listing-layout">
+      <aside class="filter-panel"><div class="filter-title"><h2>Filter Results</h2><a href="/search">Clear All</a></div><details open><summary>Category⌃</summary><label><input type="checkbox" checked/> All Sarees (1,248)</label><label><input type="checkbox"/> Handloom Sarees (892)</label><label><input type="checkbox"/> Cotton Sarees (312)</label><label><input type="checkbox"/> Silk Sarees (286)</label></details><details open><summary>Price Range (₹)⌃</summary><input type="range" min="500" max="50000" value="25000"/></details><details open><summary>Customer Rating⌃</summary><label><input type="checkbox"/> ★★★★★ 4.5 &amp; above</label><label><input type="checkbox"/> ★★★★☆ 4.0 &amp; above</label></details><details open><summary>Availability⌃</summary><label><input type="checkbox" checked/> In stock (1,196)</label></details></aside>
+      <div class="listing-results"><div class="results-toolbar"><b>{ len(p.Products) } results for “{ p.Query }”</b><span class="filter-chips"><button type="button">Handloom Sarees ×</button><button type="button">In stock ×</button><a href="/search">Clear All</a></span><label>Sort by <select name="sort" hx-get="/search" hx-select="#page" hx-target="#page"><option>Relevance</option><option>Price: Low to High</option><option>Newest</option></select></label></div>
+        <div class="product-grid">
+          if len(p.Products) == 0 {
+            <div class="empty-state"><div class="empty-state__mark">⌕</div><h2>No treasures found</h2><p>Try another search or clear your filters.</p></div>
+          } else {
+            for _, product := range p.Products {
+              @components.ProductCard(product, false)
+            }
+          }
+        </div>
+        <nav class="pagination" aria-label="Pagination"><a href="#">‹</a><a class="active" href="#">1</a><a href="#">2</a><a href="#">3</a><span>…</span><a href="#">104</a><a href="#">›</a></nav>
+      </div>
+    </section>
+  }
+}
+
+templ ProductDetail(p viewmodels.CustomerPage) {
+  @Document(p) {
+    <section class="container product-detail">@Breadcrumb("Home", "Sarees", "Chanderi Silk Cotton Saree - Royal Maroon")<div class="detail-grid"><div class="gallery" x-data="{active:0, images:['/assets/images/mock/saree-maroon.webp','/assets/images/mock/saree-blue.webp','/assets/images/mock/maker.webp']}"><div class="thumbs"><button type="button" @click="active=0"><img src="/assets/images/mock/saree-maroon.webp" alt=""/></button><button type="button" @click="active=1"><img src="/assets/images/mock/saree-blue.webp" alt=""/></button><button type="button" @click="active=2"><img src="/assets/images/mock/maker.webp" alt=""/></button></div><div class="gallery-main"><img x-show="active===0" src="/assets/images/mock/saree-maroon.webp" alt="Chanderi Silk Cotton Saree - Royal Maroon"/><img x-show="active===1" x-cloak src="/assets/images/mock/saree-blue.webp" alt="Chanderi Silk Cotton Saree - Royal Maroon"/><img x-show="active===2" x-cloak src="/assets/images/mock/maker.webp" alt="Chanderi Silk Cotton Saree - Royal Maroon"/></div></div><div class="detail-copy"><span class="badge">Bestseller</span><h1>Chanderi Silk Cotton Saree - Royal Maroon</h1><p class="lead">A timeless weave of elegance and tradition</p><div class="stars">★★★★★ <span>4.8 (218 reviews)</span></div><a class="seller-line" href="/makers/weavers-touch"><img src="/assets/images/mock/saree-blue.webp" alt=""/> By Weaver's Touch <small>Maheshwar, Madhya Pradesh</small></a><div class="detail-price">₹5,999 <del>₹7,999</del> <mark>(25% OFF)</mark></div><p>Inclusive of all taxes</p><p class="description">Lightweight, elegant and effortlessly graceful — this handwoven Chanderi saree blends the richness of silk with the comfort of cotton, making it perfect for festive occasions and special gatherings.</p><fieldset><legend>Color: Royal Maroon</legend><button class="swatch maroon" aria-label="Royal Maroon"></button><button class="swatch green" aria-label="Forest Green"></button><button class="swatch blue" aria-label="Peacock Blue"></button></fieldset><div class="quantity-row"><label>Quantity: <button type="button">−</button><output>1</output><button type="button">+</button></label><span class="stock">● In Stock <small>Only 3 left!</small></span></div><div class="detail-actions"><button class="outline-button" hx-post="/ui/cart/chanderi-royal" hx-select="#cart-count" hx-target="#cart-count">🛒 Add to Cart</button><button class="primary-button" hx-post="/ui/cart/chanderi-royal" hx-select="#cart-count" hx-target="#cart-count">⚡ Buy Now</button></div><form class="pincode"><input placeholder="Enter pincode" aria-label="Pincode"/><button type="button">Check</button></form><div class="benefits"><span>🚚 Estimated Delivery<br/><b>4 - 6 days</b></span><span>↩ Easy Returns<br/><b>within 7 days</b></span><span>♢ Secure Payments<br/><b>100% safe and trusted</b></span><span>◎ International Shipping<br/><b>To 50+ countries</b></span></div></div></div><section class="detail-tabs" x-data="{tab:'description'}"><nav><button class="active" @click="tab='description'">Product Description</button><button @click="tab='specs'">Specifications</button><button @click="tab='story'">Maker Story</button><button @click="tab='reviews'">Reviews (218)</button></nav><div x-show="tab==='description'"><p>This exquisite Chanderi Silk Cotton saree is a celebration of India's rich handloom heritage. Woven by skilled artisans in Maheshwar, it features delicate zari butis across the body and a rich traditional border.</p><ul><li>Handwoven by skilled artisans</li><li>Lightweight, breathable and easy to drape</li><li>Perfect for festive and special occasions</li></ul></div><div x-show="tab==='specs'" x-cloak><p>Fabric: Chanderi Silk Cotton · Color: Royal Maroon · Weave Type: Handloom · Care: Dry clean only</p></div><div x-show="tab==='story'" x-cloak><p>Weaver's Touch keeps Maheshwar's traditional techniques alive for contemporary homes.</p></div></section></section>
+  }
+}
+
+templ SellerStore(p viewmodels.CustomerPage) {
+  @Document(p) {
+    <section class="seller-hero"><img src="/assets/images/mock/maker.webp" alt=""/><div class="container"><h1>Mithila Arts</h1><p>Hand-painted stories from Bihar</p></div></section><section class="container seller-profile"><div class="seller-avatar">♧</div><div><h2>Mithila Arts <span>●</span></h2><p>Handpainted Stories from Bihar</p><div class="stars">★ 4.8 <small>(124 reviews)　⌖ Bihar, India　♧ On WeeVCrafts since 2021</small></div><p class="seller-description">Mithila Arts brings the rich tradition of Madhubani painting to your homes. Every piece is hand-painted by rural women artisans from Bihar, keeping centuries-old stories and culture alive.</p></div><div class="seller-actions"><button class="primary-button">♡ Follow Store</button><button class="outline-button">♧ Share Store</button></div></section><section class="container seller-tabs"><nav><a class="active" href="#products">All Products</a><a href="#">New Arrivals</a><a href="#">Best Sellers</a><a href="#">About the Maker</a><a href="#">Reviews</a><a href="#">Policies</a></nav><div class="section-head"><h2>Products by Mithila Arts</h2><a href="/products">Sort by: Featured⌄</a></div><div class="product-grid">@components.ProductCard(p.Products[0], false) @components.ProductCard(p.Products[1], false) @components.ProductCard(p.Products[3], false) @components.ProductCard(p.Products[4], false)</div></section>
+  }
+}
+
+templ Wishlist(p viewmodels.CustomerPage) {
+  @Document(p) {
+    <section class="container page-intro wishlist-intro">@Breadcrumb("Home", "My Wishlist")<h1>My Wishlist</h1><p>Handpicked with love, for a more beautiful tomorrow.</p><p>Your saved treasures from India’s finest artisans. Keep them close, move to cart when you’re ready.</p></section><section class="container section"><div class="section-head"><h2>{ p.WishlistCount } items in your wishlist</h2><a class="outline-button" href="/products">Continue Shopping →</a></div><div class="wishlist-grid">@components.ProductCard(p.Products[0], true) @components.ProductCard(p.Products[1], true) @components.ProductCard(p.Products[2], true) @components.ProductCard(p.Products[3], true)</div></section>
+  }
+}
+
+
+
+templ Orders(p viewmodels.CustomerPage) {
+  @Document(p) {
+    <section class="container page-intro account-intro">@Breadcrumb("Home", "My Account", "My Orders")<h1>My Orders</h1><p>Track, manage and view your orders from WeeVCrafts.</p><nav class="tabs"><a class="active" href="/orders">All Orders (12)</a><a href="#">Active (3)</a><a href="#">Delivered (7)</a><a href="#">Cancelled (2)</a></nav></section><section class="container orders-list"><article class="order-card"><header><div><h2>Order { p.Orders[0].Number } <mark>{ p.Orders[0].Status }</mark></h2><small>Placed on { p.Orders[0].Date }</small></div><div><b>3 items</b><strong>{ p.Orders[0].Total }</strong><small>{ p.Orders[0].Payment }</small></div><span class="status">● { p.Orders[0].Status }</span></header><div class="order-progress"><span class="done">●<b>Order Placed</b><small>{ p.Orders[0].Date }</small></span><span>○<b>Packed</b><small>Awaiting update</small></span><span>○<b>Shipped</b><small>Awaiting update</small></span><span>○<b>Delivered</b><small>Awaiting update</small></span></div><div class="order-item"><img src={ p.Cart[0].Product.ImageURL } alt=""/><div><b>{ p.Cart[0].Product.Name }</b><small>Qty: 1</small><strong>{ p.Cart[0].Product.Price }</strong></div><button class="outline-button">View Item</button></div><footer><a class="outline-button" href="/orders/%23WC2504267819">View Order</a><button class="outline-button">Need Help?</button></footer></article><article class="order-card compact-order"><header><div><h2>{ p.Orders[1].Number }</h2><small>Placed on { p.Orders[1].Date }</small></div><strong>{ p.Orders[1].Total }</strong><span class="status">● { p.Orders[1].Status }</span></header></article><article class="order-card compact-order"><header><div><h2>{ p.Orders[2].Number }</h2><small>Placed on { p.Orders[2].Date }</small></div><strong>{ p.Orders[2].Total }</strong><span class="status">● { p.Orders[2].Status }</span></header></article></section>
+  }
+}
+
+templ Returns(p viewmodels.CustomerPage) {
+  @Document(p) {
+    <section class="container page-intro returns-intro">@Breadcrumb("Home", "My Account", "Returns & Refunds")<h1>Customer Returns &amp; Refunds</h1><p>Hassle-free returns for a better tomorrow.</p><p>We want you to love what you bring home. If something isn’t right, we’re here to make it easy.</p></section><section class="container returns-list"><nav class="tabs"><a class="active" href="/returns">Active Returns (2)</a><a href="#">Refunds (1)</a><a href="#">Closed Requests (1)</a></nav><article class="return-card"><header><mark>{ p.Returns[0].Status }</mark><small>Request ID: { p.Returns[0].ID }</small></header><div class="return-main"><img src={ p.Returns[0].ImageURL } alt={ p.Returns[0].ProductName }/><div><h2>{ p.Returns[0].ProductName }</h2><p>Order <b>{ p.Returns[0].OrderNumber }</b><br/>Sold by Weaver's Touch</p><strong>{ p.Returns[0].Amount }</strong></div><dl><dt>Return Reason</dt><dd>{ p.Returns[0].Reason }</dd><dt>Requested on</dt><dd>{ p.Returns[0].Requested }</dd><dt>Pickup Address</dt><dd>HSR Layout,<br/>Bengaluru, Karnataka</dd></dl><div class="return-status"><h3>Current Status <mark>{ p.Returns[0].Status }</mark></h3><p>Our logistics partner will pick up your item soon.</p><div class="status-box">▣ Pickup scheduled for<br/><b>15 Nov 2024 (10 AM – 6 PM)</b></div></div></div><div class="return-progress"><span class="done">✓<b>Return Requested</b></span><span class="done">✓<b>Seller Reviewed</b></span><span class="done">🚚<b>Pickup Scheduled</b></span><span>□<b>Item Received</b></span><span>₹<b>Refund Initiated</b></span><span>✓<b>Refunded</b></span></div></article><div class="help-grid"><div><h2>7-Day Return Window</h2><p>You can request a return within 7 days of delivery.</p><a href="#">View Return Policy →</a></div><div><h2>Need Help?</h2><p>Our support team is here for you.</p><a href="#">Chat with Us　|　Email Us　|　Call Us</a></div></div></section>
+  }
+}
+
+templ Account(p viewmodels.CustomerPage) {
+  @Document(p) {
+    <section class="container page-intro account-intro">@Breadcrumb("Home", "My Account")<h1>Welcome back,<br/><em>Ananya!</em></h1><p>Glad to have you at WeeVCrafts.<br/>Together, we support artisans and keep traditions alive.</p></section><section class="container account-layout"><aside class="account-sidebar"><div class="profile-mini"><div class="avatar">AS</div><b>Ananya Sharma</b><small>ananya.sharma@gmail.com</small></div><a class="active" href="/account">⌂　My Account</a><a href="#">♙　Profile</a><a href="#">⌖　Addresses</a><a href="/orders">▣　Orders</a><a href="/wishlist">☆　Reviews</a><a href="#">♧　Notifications</a><a href="#">♢　Privacy</a><a href="#">▣　Security</a><a href="#">◎　Support</a></aside><div class="account-content"><div class="account-stats"><span>♙ <b>12</b><small>Orders Placed</small></span><span>♥ <b>8</b><small>Items in Wishlist</small></span><span>◆ <b>4</b><small>Reviews Written</small></span><span>♧ <b>Proud Supporter</b><small>Indian Artisans</small></span></div><div class="account-cards"><section><h2>Profile Information</h2><a href="#">Edit ✎</a><p><b>Ananya Sharma</b><br/>✉　ananya.sharma@gmail.com<br/>♧　+91 98765 43210<br/>▣　Member since 12 Mar 2023</p></section><section><h2>Saved Addresses</h2><a href="#">Manage →</a><p><b>⌂ Home <mark>Default</mark></b><br/>A-203, Green View Apartments<br/>Koramangala, Bengaluru<br/>Karnataka 560034</p></section><section><h2>Recent Orders</h2><a href="/orders">View All →</a><div class="mini-item"><img src={ p.Products[2].ImageURL } alt=""/><span>Chanderi Silk Cotton Saree<br/><small>Order #WC789456</small><b>{ p.Products[2].Price }</b></span></div></section><section><h2>Returns &amp; Refunds</h2><a href="/returns">View All →</a><div class="mini-item"><img src={ p.Products[4].ImageURL } alt=""/><span>Handpainted Ceramic Mugs<br/><small>Return Requested</small><b>View Status</b></span></div></section><section><h2>Payment Methods</h2><a href="#">Manage →</a><p>🔴🟠　•••• 4586　<mark>Default</mark><br/><small>Expires 08/2027</small></p></section><section><h2>Notification Preferences</h2><a href="#">Manage →</a><p>♡　Order updates <b class="green">On　›</b><br/>◆　Offers &amp; promotions <b class="green">On　›</b><br/>♧　New arrivals <b class="green">On　›</b></p></section><section><h2>Privacy Preferences</h2><a href="#">Manage →</a><p>♙　Personal data　›<br/>✉　Communications　›<br/>♧　Data &amp; privacy　›</p></section><section><h2>Security &amp; Sessions</h2><a href="#">Manage →</a><p>▣　Password　›<br/>♢　Two-factor authentication　›<br/>▣　Active sessions　›</p></section></div></div></section>
+  }
+}
+
+templ OrderDetail(p viewmodels.CustomerPage) {
+  @Document(p) { <section class="container page-intro compact-intro">@Breadcrumb("Home", "My Account", "My Orders")<h1>Order #WC2504267819</h1><p>Placed on 26 Apr 2024, 10:24 AM</p></section><section class="container order-detail-layout"><div class="order-detail-main"><div class="order-detail-status"><mark>Processing</mark><h2>Your order is being prepared with care.</h2><p>We'll notify you as soon as it ships.</p></div><article class="order-line"><img src={ p.Cart[0].Product.ImageURL } alt=""/><span><b>{ p.Cart[0].Product.Name }</b><small>Qty: 1</small></span><strong>{ p.Cart[0].Product.Price }</strong></article></div><aside class="summary"><h2>Order Summary</h2><p>Items ({ p.CartCount }) <b>₹14,797</b></p><p>Shipping <b>₹0</b></p><hr/><h3>Total Amount <strong>₹14,797</strong></h3><button class="outline-button full">View Invoice</button><button class="outline-button full">Need Help?</button></aside></section> }
+}
+
+templ Empty(p viewmodels.CustomerPage) {
+  @Document(p) { <section class="container empty-page"><div class="empty-mark">♡</div><h1>{ p.Title }</h1><p>{ p.Notice }</p><a class="primary-button" href="/products">Browse Products →</a></section> }
+}
+
+templ Cart(p viewmodels.CustomerPage) {
+  @Document(p) {
+    <section class="container page-intro compact-intro">
+      @Breadcrumb("Home", "Your Cart")
+      <h1>Your Cart</h1><p>{ p.CartCount } items from 3 sellers</p>
+    </section>
+    <section class="container cart-layout">
+      <div class="cart-items">
+        if len(p.Cart) == 0 {
+          <div class="empty-state"><div class="empty-state__mark">🛒</div><h2>Your cart is waiting for something special</h2><p>Browse handmade treasures and bring a little India home.</p><a class="primary-button" href="/products">Continue Shopping</a></div>
+        } else {
+          for _, item := range p.Cart {
+            <article class="cart-seller"><h2>{ item.Product.Seller }</h2><img src={ item.Product.ImageURL } alt={ item.Product.Name }/><h3>{ item.Product.Name }</h3><p>{ item.Product.Price } · Quantity { item.Quantity }</p><button type="button" hx-post={ "/ui/cart/" + item.Product.Slug } hx-vals='{"delta":"-1"}' hx-select="#page" hx-target="#page">Remove one</button></article>
+          }
+        }
+      </div>
+      <aside class="summary"><h2>Order Summary</h2><p>Items ({ p.CartCount }) <b>₹10,397</b></p><p>Delivery Charges <b>₹100</b></p><h3>Total Amount <strong>₹8,497</strong></h3><a class="primary-button full" href="/checkout">Proceed to Checkout</a></aside>
+    </section>
+  }
+}
+
+templ Checkout(p viewmodels.CustomerPage) {
+  @Document(p) {
+    <section class="container page-intro checkout-intro">@Breadcrumb("Home", "Checkout")<h1>Checkout</h1><p>Secure checkout for a brighter, more handmade tomorrow.</p><div class="steps"><span class="active">1 <b>Address</b></span><i></i><span>2 <b>Delivery</b></span><i></i><span>3 <b>Payment</b></span><i></i><span>4 <b>Review</b></span></div></section>
+    <section class="container checkout-layout"><div class="checkout-main"><section class="checkout-card"><h2><span>1</span> Delivery Address</h2><div class="address selected"><b>●　Priya Sharma <mark>Default</mark></b><p>#102, Green View Apartments, Bengaluru - 560034<br/>India<br/><small>+91 98765 43210</small></p><a href="#">Edit</a></div><button class="outline-button full">＋ Add a New Address</button></section><section class="checkout-card"><h2><span>2</span> Delivery &amp; Order Details</h2><div class="checkout-item"><img src={ p.Cart[0].Product.ImageURL } alt=""/><div><b>{ p.Cart[0].Product.Seller }</b><p>{ p.Cart[0].Product.Name } · Qty: 1 · { p.Cart[0].Product.Price }</p></div><span>🚚 4 - 6 days</span></div><div class="checkout-item"><img src={ p.Cart[1].Product.ImageURL } alt=""/><div><b>{ p.Cart[1].Product.Seller }</b><p>{ p.Cart[1].Product.Name } · Qty: 1 · { p.Cart[1].Product.Price }</p></div><span>🚚 4 - 6 days</span></div></section><section class="checkout-card"><h2><span>3</span> Payment Method</h2><nav class="payment-methods"><button class="active">♢ UPI　›</button><button>▣ Credit / Debit Cards　›</button><button>♜ Netbanking　›</button></nav><input placeholder="name@upi"/><button class="primary-button full" hx-post="/ui/checkout" hx-target="#page">Continue to Review →</button></section></div><aside class="summary"><h2>Order Summary ({ p.CartCount } items)</h2><p>Subtotal <b>₹9,797</b></p><p>Shipping <b>₹198</b></p><h3>Total Payable <strong>₹9,995</strong></h3><button class="primary-button full" hx-post="/ui/checkout" hx-target="#page">Place Order →</button><small>Preview only. No payment will be attempted.</small></aside></section>
+  }
+}
