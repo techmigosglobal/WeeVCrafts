@@ -1,0 +1,21 @@
+{{define "policy"}}
+<!doctype html>
+<html lang="en">
+<head>
+  <title>{{.Title}}</title>
+  {{template "head" .}}
+</head>
+<body class="bg-paper text-ink">
+  {{template "header" .}}
+  <main class="mx-auto flex min-h-[55vh] max-w-screen-2xl items-center px-5 py-16 lg:px-10">
+    <div class="max-w-2xl">
+      <p class="text-sm font-semibold uppercase tracking-[0.18em] text-citrus">{{.Brand}}</p>
+      <h1 class="mt-5 font-display text-5xl leading-none text-indigo">{{.Title}}</h1>
+      <p class="mt-5 text-lg leading-8 text-ink/70">{{.Error}}</p>
+      <a class="button-primary mt-8 inline-flex" href="/">Return home</a>
+    </div>
+  </main>
+  {{template "footer" .}}
+</body>
+</html>
+{{end}}

@@ -1,0 +1,240 @@
+openapi: 3.0.3
+info:
+  title: WeCratfs API
+  version: 1.0.0
+  description: JSON-only v1 contract for the WeCratfs marketplace.
+servers:
+  - url: /
+paths:
+  /api/v1/products:
+    get:
+      summary: List approved products
+      parameters:
+        - {name: category, in: query, schema: {type: string}}
+      responses:
+        '200': {description: Product list}
+  /api/v1/products/{slug}:
+    get:
+      summary: Get one approved product
+      parameters:
+        - {name: slug, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Product}
+        '404': {description: Not found}
+  /api/v1/search:
+    get:
+      summary: Search approved products with PostgreSQL fallback
+      parameters:
+        - {name: q, in: query, schema: {type: string}}
+        - {name: category, in: query, schema: {type: string}}
+        - {name: limit, in: query, schema: {type: integer, maximum: 48}}
+        - {name: offset, in: query, schema: {type: integer, minimum: 0}}
+        - {name: sort, in: query, schema: {type: string, enum: [price_asc, price_desc, newest]}}
+      responses:
+        '200': {description: Search result}
+  /api/v1/auth/register:
+    post:
+      summary: Register a customer and create a session
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/RegisterRequest'}}}}
+      responses: {'201': {description: Registered}, '422': {description: Invalid input}}
+  /api/v1/auth/login:
+    post:
+      summary: Sign in and create a session
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/LoginRequest'}}}}
+      responses: {'200': {description: Signed in}, '401': {description: Invalid credentials}}
+  /api/v1/auth/logout:
+    post:
+      summary: Revoke the current session
+      security: [{cookieSession: []}, {csrfHeader: []}]
+      responses: {'200': {description: Signed out}, '403': {description: Denied}}
+  /api/v1/auth/password-reset/request:
+    post:
+      summary: Request a password-reset email without revealing account existence
+      requestBody: {required: true, content: {application/json: {schema: {type: object, required: [email], properties: {email: {type: string, format: email}}}}}}
+      responses: {'202': {description: Request accepted}, '422': {description: Invalid email}, '503': {description: Delivery unavailable}}
+  /api/v1/auth/password-reset/confirm:
+    post:
+      summary: Consume a one-time password-reset token
+      requestBody: {required: true, content: {application/json: {schema: {type: object, required: [token, password], properties: {token: {type: string}, password: {type: string, minLength: 12}}}}}}
+      responses: {'200': {description: Password reset}, '422': {description: Invalid or expired token}, '500': {description: Reset failed}}
+  /api/v1/auth/email-verification/request:
+    post:
+      summary: Request an email-verification link for the current account
+      security: [{cookieSession: []}, {csrfHeader: []}]
+      responses: {'202': {description: Request accepted}, '403': {description: Denied}, '503': {description: Delivery unavailable}}
+  /api/v1/auth/email-verification/confirm:
+    post:
+      summary: Consume a one-time email-verification token
+      requestBody: {required: true, content: {application/json: {schema: {type: object, required: [token], properties: {token: {type: string}}}}}}
+      responses: {'200': {description: Email verified}, '422': {description: Invalid or expired token}}
+  /api/v1/cart:
+    get:
+      summary: Get the authenticated cart
+      security: [{cookieSession: []}]
+      responses: {'200': {description: Cart}}
+  /api/v1/cart/add:
+    post:
+      summary: Add a variant to the authenticated cart
+      security: [{cookieSession: []}, {csrfHeader: []}]
+      responses: {'200': {description: Cart}, '422': {description: Invalid cart update}}
+  /api/v1/wishlist:
+    get:
+      summary: List the authenticated customer's saved products
+      security: [{cookieSession: []}]
+      responses: {'200': {description: Wishlist}}
+  /api/v1/wishlist/add:
+    post:
+      summary: Save an approved product for the authenticated customer
+      security: [{cookieSession: []}, {csrfHeader: []}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/WishlistRequest'}}}}
+      responses: {'201': {description: Saved}, '422': {description: Invalid product}}
+  /api/v1/wishlist/{productId}:
+    delete:
+      summary: Remove a saved product
+      security: [{cookieSession: []}, {csrfHeader: []}]
+      parameters:
+        - {name: productId, in: path, required: true, schema: {type: integer, format: int64}}
+      responses: {'200': {description: Removed}, '422': {description: Invalid product}}
+  /api/v1/checkout:
+    post:
+      summary: Create one pending-payment order idempotently
+      security: [{cookieSession: []}, {csrfHeader: []}]
+      parameters:
+        - {name: Idempotency-Key, in: header, required: true, schema: {type: string, minLength: 16}}
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/CheckoutRequest'}}}}
+      responses: {'201': {description: Pending order}, '409': {description: Idempotency key conflict}, '422': {description: Checkout rejected}}
+  /api/v1/orders:
+    get:
+      summary: List the current customer's orders
+      security: [{cookieSession: []}]
+      responses: {'200': {description: Orders}}
+  /api/v1/orders/{orderNumber}:
+    get:
+      summary: Get one order owned by the current customer
+      security: [{cookieSession: []}]
+      parameters:
+        - {name: orderNumber, in: path, required: true, schema: {type: string}}
+      responses: {'200': {description: Order}, '404': {description: Not found}}
+  /api/v1/orders/{orderNumber}/payment:
+    post:
+      summary: Create or reuse the server-side Razorpay order for a pending order
+      security: [{cookieSession: []}, {csrfHeader: []}]
+      parameters:
+        - {name: orderNumber, in: path, required: true, schema: {type: string}}
+      responses:
+        '201': {description: Payment intent with provider order reference}
+        '404': {description: Order or payment attempt not found}
+        '409': {description: Order is no longer payable}
+        '502': {description: Payment provider unavailable}
+  /api/v1/orders/{orderNumber}/cancel:
+    post:
+      summary: Cancel a customer-owned pending-payment order and release its reservation
+      security: [{cookieSession: []}, {csrfHeader: []}]
+      parameters:
+        - {name: orderNumber, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Cancelled}
+        '404': {description: Not found}
+        '409': {description: Order is no longer cancelable}
+  /api/v1/orders/{orderNumber}/refund:
+    post:
+      summary: Request one full refund for a customer-owned paid order
+      description: The server derives the amount from PostgreSQL and uses the Idempotency-Key to prevent duplicate provider refunds.
+      security: [{cookieSession: []}, {csrfHeader: []}]
+      parameters:
+        - {name: orderNumber, in: path, required: true, schema: {type: string}}
+        - {name: Idempotency-Key, in: header, required: true, schema: {type: string, minLength: 16, maxLength: 200}}
+      requestBody: {required: true, content: {application/json: {schema: {type: object, properties: {reason: {type: string, maxLength: 500}, idempotency_key: {type: string, minLength: 16, maxLength: 200}}}}}}
+      responses:
+        '200': {description: Refund recorded or replayed idempotently}
+        '403': {description: Authentication or CSRF validation failed}
+        '404': {description: Refundable order not found}
+        '409': {description: Order is not refundable or request is already in progress}
+        '422': {description: Invalid refund request}
+        '502': {description: Payment provider unavailable or response mismatch}
+  /api/v1/privacy:
+    get:
+      summary: Get the authenticated privacy center
+      security: [{cookieSession: []}]
+      responses: {'200': {description: Privacy center}}
+  /api/v1/privacy/consent:
+    post:
+      summary: Record purpose-specific consent
+      security: [{cookieSession: []}, {csrfHeader: []}]
+      responses: {'200': {description: Recorded}}
+  /api/v1/privacy/requests:
+    post:
+      summary: Create an access/correction/deletion/grievance request
+      security: [{cookieSession: []}, {csrfHeader: []}]
+      responses: {'201': {description: Request created}}
+  /api/v1/privacy/delete:
+    post:
+      summary: Execute an authenticated deletion request for eligible account data
+      security: [{cookieSession: []}, {csrfHeader: []}]
+      requestBody: {required: true, content: {application/json: {schema: {type: object, required: [request_id], properties: {request_id: {type: integer, format: int64, minimum: 1}}}}}}
+      responses: {'200': {description: Eligible data deleted}, '404': {description: Request not found}, '409': {description: Request is not executable}}
+  /api/v1/seller/products/media-url:
+    post:
+      summary: Create a seller-owned presigned product media upload URL
+      security: [{cookieSession: []}, {csrfHeader: []}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/MediaUploadRequest'}}}}
+      responses: {'201': {description: Presigned upload}, '422': {description: Invalid media request}}
+  /api/v1/seller/products/media-finalize:
+    post:
+      summary: Verify and finalize a seller-owned uploaded product image
+      security: [{cookieSession: []}, {csrfHeader: []}]
+      requestBody: {required: true, content: {application/json: {schema: {type: object, required: [media_id], properties: {media_id: {type: integer, format: int64, minimum: 1}}}}}}
+      responses: {'200': {description: Finalized public media}, '409': {description: Upload is not finalizable}, '422': {description: Stored object failed validation}}
+  /api/v1/seller/products/media-delete:
+    post:
+      summary: Delete a seller-owned pending product media upload
+      security: [{cookieSession: []}, {csrfHeader: []}]
+      requestBody: {required: true, content: {application/json: {schema: {type: object, required: [media_id], properties: {media_id: {type: integer, format: int64, minimum: 1}}}}}}
+      responses: {'200': {description: Upload deleted}, '409': {description: Ready media cannot be deleted through this endpoint}}
+components:
+  securitySchemes:
+    cookieSession: {type: apiKey, in: cookie, name: wecratfs_session}
+    csrfHeader: {type: apiKey, in: header, name: X-CSRF-Token}
+  schemas:
+    RegisterRequest:
+      type: object
+      required: [email, display_name, password]
+      properties:
+        email: {type: string, format: email}
+        display_name: {type: string}
+        password: {type: string, minLength: 12}
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: {type: string, format: email}
+        password: {type: string}
+    CheckoutRequest:
+      type: object
+      required: [cart_id, address]
+      properties:
+        cart_id: {type: integer, format: int64, minimum: 1}
+        idempotency_key: {type: string, minLength: 16, description: Used only when the Idempotency-Key header is absent}
+        address:
+          type: object
+          required: [recipient_name, line1, city, state, postal_code]
+          properties:
+            recipient_name: {type: string}
+            line1: {type: string}
+            line2: {type: string}
+            city: {type: string}
+            state: {type: string}
+            postal_code: {type: string}
+            country_code: {type: string, default: IN}
+    MediaUploadRequest:
+      type: object
+      required: [product_id, content_type, byte_size]
+      properties:
+        product_id: {type: integer, format: int64, minimum: 1}
+        content_type: {type: string, enum: [image/jpeg, image/png, image/webp]}
+        byte_size: {type: integer, format: int64, minimum: 1, maximum: 26214400}
+    WishlistRequest:
+      type: object
+      required: [product_id]
+      properties:
+        product_id: {type: integer, format: int64, minimum: 1}

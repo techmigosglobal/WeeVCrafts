@@ -1,0 +1,30 @@
+{{define "product"}}
+<!doctype html>
+<html lang="en">
+<head>
+  <title>{{.Title}}</title>
+  {{template "head" .}}
+</head>
+<body class="bg-paper text-ink" hx-boost="true" hx-target="#page" hx-swap="outerHTML">
+  {{template "header" .}}
+  <main id="page" class="mx-auto max-w-screen-2xl px-5 py-10 lg:px-10 lg:py-16">
+    <a class="text-sm font-semibold text-indigo/70 hover:text-indigo" href="/">← Back to collection</a>
+    <section class="mt-8 grid gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16">
+      <div class="product-detail-media">
+        {{if .Product.ImageURL}}<img src="{{.Product.ImageURL}}" alt="{{.Product.Name}}" class="h-full w-full object-cover">{{else}}<span class="text-sm text-ink/50">No product image has been published.</span>{{end}}
+      </div>
+      <div class="self-center">
+        <p class="text-sm font-semibold text-citrus">{{.Product.Brand}}</p>
+        <p class="mt-3 text-sm uppercase tracking-[0.14em] text-ink/55">{{.Product.CategoryName}}</p>
+        <h1 class="mt-4 max-w-xl font-display text-5xl leading-[0.98] tracking-[-0.04em] text-indigo sm:text-6xl">{{.Product.Name}}</h1>
+        <p class="mt-6 text-2xl font-semibold text-indigo">{{money .Product.PriceCents}}</p>
+        <p class="mt-5 max-w-lg text-base leading-7 text-ink/70">{{.Product.Description}}</p>
+        <div class="mt-7 border-y border-line py-5 text-sm text-ink/70"><span class="font-semibold text-indigo">Availability:</span> {{.Product.DeliveryLabel}} · {{.Product.Available}} available</div>
+        {{if gt .Product.Available 0}}<form class="mt-7 flex flex-wrap gap-3" method="post" action="/cart/add"><input type="hidden" name="csrf_token" value="{{.CSRFToken}}"><input type="hidden" name="variant_id" value="{{.Product.VariantID}}"><label class="sr-only" for="product-quantity">Quantity</label><input class="field w-24" id="product-quantity" name="quantity" type="number" min="1" max="99" value="1"><button class="button-primary" type="submit">Add to cart</button></form>{{else}}<div class="mt-7 rounded-2xl border border-line bg-mist p-5 text-sm leading-6 text-ink/70">This product is currently out of stock. Availability is read from PostgreSQL inventory.</div>{{end}}{{if .Authenticated}}<form class="mt-4" method="post" action="/wishlist/add"><input type="hidden" name="csrf_token" value="{{.CSRFToken}}"><input type="hidden" name="product_id" value="{{.Product.ID}}"><button class="button-secondary" type="submit">Save to wishlist</button></form>{{end}}
+      </div>
+    </section>
+  </main>
+  {{template "footer" .}}
+</body>
+</html>
+{{end}}

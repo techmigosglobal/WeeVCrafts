@@ -1,0 +1,77 @@
+{{define "privacy-center"}}
+<!doctype html>
+<html lang="en">
+<head><title>{{.Title}}</title>{{template "head" .}}</head>
+<body class="bg-paper text-ink">
+  {{template "header" .}}
+  <main class="mx-auto max-w-4xl px-5 py-12 lg:px-10 lg:py-16">
+    <p class="text-sm font-semibold uppercase tracking-[0.18em] text-citrus">Your controls</p>
+    <h1 class="mt-3 font-display text-5xl text-indigo">Privacy center</h1>
+    <p class="mt-3 text-sm leading-6 text-ink/65">Account {{.AccountUserID}} · choices are recorded with a policy version and source.</p>
+    <section class="mt-10 grid gap-6 lg:grid-cols-2">
+      <div class="rounded-2xl border border-line bg-white p-6">
+        <h2 class="font-display text-3xl text-indigo">Optional choices</h2>
+        <form class="mt-6 grid gap-4" method="post" action="/privacy/consent">
+          <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+          <input type="hidden" name="purpose" value="marketing">
+          <input type="hidden" name="granted" value="{{if .PrivacyCenter.EmailMarketing}}false{{else}}true{{end}}">
+          <p class="text-sm leading-6 text-ink/65">Email marketing is currently <strong>{{if .PrivacyCenter.EmailMarketing}}enabled{{else}}disabled{{end}}</strong>.</p>
+          <button class="button-secondary" type="submit">{{if .PrivacyCenter.EmailMarketing}}Withdraw marketing consent{{else}}Allow marketing email{{end}}</button>
+        </form>
+        <form class="mt-4" method="post" action="/privacy/consent">
+          <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+          <input type="hidden" name="purpose" value="analytics">
+          <input type="hidden" name="granted" value="true">
+          <button class="text-sm font-semibold text-indigo underline" type="submit">Allow optional analytics</button>
+        </form>
+      </div>
+      <div class="rounded-2xl border border-line bg-white p-6">
+        <h2 class="font-display text-3xl text-indigo">Make a request</h2>
+        <form class="mt-6 grid gap-4" method="post" action="/privacy/requests">
+          <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+          <label class="grid gap-2 text-sm font-semibold" for="request_type">Request type
+            <select class="field" id="request_type" name="request_type">
+              <option value="access">Access my data</option>
+              <option value="correction">Correct my data</option>
+              <option value="deletion">Request deletion</option>
+              <option value="grievance">Raise a grievance</option>
+            </select>
+          </label>
+          <label class="grid gap-2 text-sm font-semibold" for="details">Details
+            <textarea class="field min-h-32" id="details" name="details" maxlength="2000" required></textarea>
+          </label>
+          <button class="button-primary" type="submit">Submit request</button>
+        </form>
+      </div>
+    </section>
+    <section class="mt-8 rounded-2xl border border-line bg-white p-6">
+      <h2 class="font-display text-3xl text-indigo">Consent history</h2>
+      {{if .PrivacyCenter.Consents}}
+      <div class="mt-5 grid gap-3">{{range .PrivacyCenter.Consents}}<div class="flex flex-wrap justify-between gap-3 border-b border-line pb-3 text-sm"><span>{{.Purpose}} · {{if .Granted}}granted{{else}}withdrawn{{end}}</span><span class="text-ink/55">{{.PolicyVersion}} · {{date .CreatedAt}}</span></div>{{end}}</div>
+      {{else}}<p class="mt-4 text-sm text-ink/60">No optional consent records yet.</p>{{end}}
+    </section>
+    <section class="mt-8 rounded-2xl border border-line bg-white p-6">
+      <h2 class="font-display text-3xl text-indigo">Requests</h2>
+      {{if .PrivacyCenter.Requests}}
+      <div class="mt-5 grid gap-3">
+        {{range .PrivacyCenter.Requests}}
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3 text-sm">
+          <span>{{.Type}} · {{.Status}}<span class="block text-ink/55">Due {{date .DueAt}}</span></span>
+          {{if and (eq .Type "deletion") (eq .Status "open")}}
+          <form method="post" action="/privacy/delete">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <input type="hidden" name="request_id" value="{{.ID}}">
+            <button class="button-secondary" type="submit">Delete eligible data</button>
+          </form>
+          {{end}}
+        </div>
+        {{end}}
+      </div>
+      {{else}}<p class="mt-4 text-sm text-ink/60">No privacy requests yet.</p>{{end}}
+    </section>
+    <p class="mt-6 text-xs leading-5 text-ink/55">Orders, payment attempts, and consent history may be retained where required for accounting, disputes, fraud prevention, or compliance. Eligible account and delivery data is removed or anonymized in one transaction.</p>
+  </main>
+  {{template "footer" .}}
+</body>
+</html>
+{{end}}

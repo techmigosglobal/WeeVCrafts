@@ -1,0 +1,11 @@
+{{define "wishlist"}}
+<!doctype html>
+<html lang="en">
+<head><title>{{.Title}}</title>{{template "head" .}}</head>
+<body class="bg-paper text-ink">
+  {{template "header" .}}
+  <main class="mx-auto max-w-4xl px-5 py-12 lg:px-10 lg:py-16"><p class="text-sm font-semibold uppercase tracking-[0.18em] text-citrus">Saved with intention</p><h1 class="mt-3 font-display text-5xl text-indigo">Wishlist</h1><section class="mt-10 grid gap-4">{{if .Wishlist}}{{range .Wishlist}}<article class="flex flex-wrap items-center justify-between gap-5 rounded-2xl border border-line bg-white p-5"><a class="min-w-0" href="/products/{{.Slug}}"><p class="text-xs font-semibold uppercase tracking-[0.12em] text-ink/50">{{.Brand}}</p><h2 class="mt-2 text-lg font-semibold text-indigo">{{.Name}}</h2><p class="mt-2 text-sm text-ink/60">{{money .PriceCents}} · {{.Available}} available</p></a><form method="post" action="/wishlist/remove"><input type="hidden" name="csrf_token" value="{{.CSRFToken}}"><input type="hidden" name="product_id" value="{{.ProductID}}"><button class="button-secondary" type="submit">Remove</button></form></article>{{end}}{{else}}<div class="empty-state"><h2 class="font-display text-3xl text-indigo">Nothing saved yet</h2><p class="mt-3 text-sm text-ink/65">Save products that feel right and return to them when you are ready.</p><a class="button-primary mt-6" href="/">Browse products</a></div>{{end}}</section></main>
+  {{template "footer" .}}
+</body>
+</html>
+{{end}}

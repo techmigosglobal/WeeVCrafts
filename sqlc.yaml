@@ -1,0 +1,32 @@
+version: "2"
+
+sql:
+  - engine: postgresql
+    queries:
+      - internal/adapters/postgres/queries/catalog.sql
+      - internal/adapters/postgres/queries/identity.sql
+      - internal/adapters/postgres/queries/primitives.sql
+    schema:
+      - internal/adapters/postgres/migrations/0001_init.sql
+      - internal/adapters/postgres/migrations/0002_platform_primitives.sql
+      - internal/adapters/postgres/migrations/0003_identity_foundation.sql
+      - internal/adapters/postgres/migrations/0004_identity_roles.sql
+      - internal/adapters/postgres/migrations/0005_seller_catalog.sql
+      - internal/adapters/postgres/migrations/0006_commerce.sql
+      - internal/adapters/postgres/migrations/0007_inventory_reservations.sql
+      - internal/adapters/postgres/migrations/0008_privacy.sql
+      - internal/adapters/postgres/migrations/0009_payment_webhooks.sql
+      - internal/adapters/postgres/migrations/0010_product_media.sql
+      - internal/adapters/postgres/migrations/0011_checkout_idempotency_hash.sql
+      - internal/adapters/postgres/migrations/0012_product_media_lifecycle.sql
+      - internal/adapters/postgres/migrations/0013_product_media_deletion_claim.sql
+      - internal/adapters/postgres/migrations/0014_payment_refunds.sql
+      - internal/adapters/postgres/migrations/0015_auth_action_tokens.sql
+    gen:
+      go:
+        package: generated
+        out: internal/adapters/postgres/generated
+        sql_package: pgx/v5
+        emit_json_tags: true
+        emit_empty_slices: true
+        emit_interface: true
