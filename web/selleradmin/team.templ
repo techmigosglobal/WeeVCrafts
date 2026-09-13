@@ -1,0 +1,22 @@
+package selleradmin
+
+import "github.com/wecratfs/commerce/internal/web/viewmodels"
+
+templ Team(p viewmodels.SellerAdminPage) {
+  @Document(p) {
+    <section class="seller-team-layout">
+      <article class="seller-panel seller-team-panel">
+        <div class="seller-panel-heading"><div><span class="material-symbols-outlined">manage_accounts</span><span><h2>Store team</h2><p>Keep access close to the work each person owns.</p></span></div><a class="seller-button primary" href="/seller-admin/team?notice=Invite+form+opened"><span class="material-symbols-outlined">person_add</span>Invite member</a></div>
+        <div class="seller-team-table"><div class="seller-team-head"><span>Member</span><span>Role</span><span>Permissions</span><span>Last active</span><span>Status</span><span>Action</span></div>
+          for _, member := range p.Team {
+            <div class="seller-team-row"><span class="seller-team-person"><img src={ member.Image } alt={ member.Name }/><span><b>{ member.Name }</b><small>{ member.Email }</small></span></span><strong>{ member.Role }</strong><span>{ member.Permissions }</span><span>{ member.LastActive }</span><span class={ "seller-chip " + sellerStatusClass(member.Status) }>{ member.Status }</span><a href={ "/seller-admin/team?notice=Permissions+editor+opened+for+" + member.Name }>Manage</a></div>
+          }
+        </div>
+      </article>
+      <aside class="seller-team-side">
+        <article class="seller-panel"><div class="seller-panel-heading"><div><span class="material-symbols-outlined">verified_user</span><span><h2>Permission principles</h2><p>Owner-controlled access for a safer seller workspace.</p></span></div></div><div class="team-principles"><span><i class="material-symbols-outlined">check_circle</i><b>Least privilege</b><small>Give access only to the tools a teammate needs.</small></span><span><i class="material-symbols-outlined">check_circle</i><b>Seller isolation</b><small>Team members can only see Weaver's Touch records.</small></span><span><i class="material-symbols-outlined">check_circle</i><b>Traceable changes</b><small>Permission edits and sensitive actions are recorded.</small></span></div></article>
+        <article class="seller-panel"><div class="seller-panel-heading"><div><span class="material-symbols-outlined">rule</span><span><h2>Access presets</h2><p>Start with a clear responsibility.</p></span></div></div><div class="team-presets"><a href="/seller-admin/team?notice=Catalog+manager+preset+selected"><b>Catalog manager</b><small>Products, variants, media and inventory</small><span class="material-symbols-outlined">arrow_forward</span></a><a href="/seller-admin/team?notice=Order+assistant+preset+selected"><b>Order assistant</b><small>Orders, fulfilment and return requests</small><span class="material-symbols-outlined">arrow_forward</span></a><a href="/seller-admin/team?notice=Finance+viewer+preset+selected"><b>Finance viewer</b><small>Read-only commissions and settlements</small><span class="material-symbols-outlined">arrow_forward</span></a></div></article>
+      </aside>
+    </section>
+  }
+}

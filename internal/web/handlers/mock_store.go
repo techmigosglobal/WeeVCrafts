@@ -40,7 +40,7 @@ func (s *mockStore) session(w http.ResponseWriter, r *http.Request) *mockSession
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.sessions[id] == nil {
-		s.sessions[id] = &mockSession{Wishlist: map[string]bool{"brass-elephant": true, "chanderi-royal": true}, Cart: seedCart(), Orders: seedOrders()}
+		s.sessions[id] = &mockSession{Wishlist: map[string]bool{"madhubani-tree": true, "brass-elephant": true, "chanderi-royal": true, "wooden-box": true, "ceramic-mugs": true, "blue-tote": true}, Cart: seedCart(), Orders: seedOrders()}
 	}
 	return s.sessions[id]
 }
@@ -94,7 +94,7 @@ func (s *mockStore) sessionUnlocked(w http.ResponseWriter, r *http.Request) *moc
 		http.SetCookie(w, &http.Cookie{Name: cookieName, Value: id, Path: "/", HttpOnly: true, SameSite: http.SameSiteLaxMode})
 	}
 	if s.sessions[id] == nil {
-		s.sessions[id] = &mockSession{Wishlist: map[string]bool{"brass-elephant": true, "chanderi-royal": true}, Cart: seedCart(), Orders: seedOrders()}
+		s.sessions[id] = &mockSession{Wishlist: map[string]bool{"madhubani-tree": true, "brass-elephant": true, "chanderi-royal": true, "wooden-box": true, "ceramic-mugs": true, "blue-tote": true}, Cart: seedCart(), Orders: seedOrders()}
 	}
 	return s.sessions[id]
 }

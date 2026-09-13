@@ -1,0 +1,42 @@
+package selleradmin
+
+import "github.com/wecratfs/commerce/internal/web/viewmodels"
+
+templ InventoryRows(items []viewmodels.SellerAdminInventory) {
+  for _, item := range items {
+    <div class="inventory-row"><span class="seller-product-cell"><img src={ item.Image } alt=""/><b>{ item.Name }</b></span><span>{ item.SKU }</span><span>{ item.Variant }</span><span>{ item.Location }</span><strong class={ sellerStockClass(item.Available) }>{ item.Available }</strong><span>{ item.Reserved }</span><span>{ item.Reorder }</span><span class={ "seller-chip " + sellerStatusClass(item.Status) }>{ item.Status }</span><a href={ "/seller-admin/inventory?notice=" + sellerNotice("Stock actions opened: ", item.Name) } class="table-more"><span class="material-symbols-outlined">more_vert</span></a></div>
+  }
+}
+
+templ OrderRows(orders []viewmodels.SellerAdminOrder) {
+  for i, order := range orders {
+    <div class={ sellerOrderRowClass(i) }><input type="checkbox"/><span><b>{ order.Number }</b><small>{ order.Date }</small></span><span><b>{ order.Customer }</b><small>{ order.Destination }</small></span><strong>{ order.Items }</strong><strong>{ order.Value }</strong><span><span class="material-symbols-outlined">{ sellerOrderIcon(order.Type) }</span> { order.Type }</span><span class="seller-chip success">{ order.Payment }</span><span class={ "seller-chip " + sellerStatusClass(order.Status) }>{ order.Status }</span><a href={ "/seller-admin/orders?notice=" + sellerNotice("Order actions opened: ", order.Number) } class="table-more"><span class="material-symbols-outlined">{ sellerOrderCaret(i) }</span></a></div>
+    if i == 0 {
+      <div class="order-expanded"><header><span><input type="checkbox"/> <b>Order { order.Number }</b> <em class="seller-chip warning">New</em><small>Placed on 26 Apr 2024, 10:24 AM &nbsp;|&nbsp; Paid via UPI</small></span><span><a class="seller-button primary" href="/seller-admin/orders?notice=Order+marked+ready+to+ship">Mark Ready to Ship</a><a class="seller-button outline" href="/seller-admin/orders?notice=Invoice+opened">View Invoice</a></span></header><div class="order-details-grid"><section><h3>Order Items (2)</h3><div class="order-item"><img src="/assets/images/customer/saree-maroon.png" alt=""/><span><b>Chanderi Silk Cotton Saree - Royal Maroon</b><small>SKU: CSHR001 &nbsp;|&nbsp; Qty: 1</small><strong>INR 5,999</strong></span></div><div class="order-item"><img src="/assets/images/customer/ceramic-mugs.png" alt=""/><span><b>Handpainted Ceramic Mugs (Set of 2)</b><small>SKU: MUGH02 &nbsp;|&nbsp; Qty: 1</small><strong>INR 1,299</strong></span></div><dl><dt>Item Total</dt><dd>INR 7,298</dd><dt>Shipping Charges</dt><dd>INR 0</dd><dt>Discount</dt><dd>- INR 1,300</dd><dt><b>Total Order Value</b></dt><dd><b>INR 5,998</b></dd></dl></section><section><h3>Customer &amp; Shipping Details</h3><p class="person-detail"><span class="material-symbols-outlined">person</span><b>Priya Sharma<small>(+91 98765 43210)<br/>priya.sharma@gmail.com</small></b></p><p class="person-detail"><span class="material-symbols-outlined">location_on</span>#102, Green View Apartments<br/>12th Main Road, Koramangala<br/>Bengaluru, Karnataka - 560034<br/>India</p><div class="shipping-note"><span class="material-symbols-outlined">local_shipping</span><b>Standard Delivery<small>4 - 6 days</small></b></div></section><section><h3>Fulfillment &amp; Shipping</h3><div class="fulfillment-timeline"><span class="done"><i>✓</i><b>Order Placed</b><small>26 Apr 2024, 10:24 AM</small></span><span><i></i><b>Ready to Ship</b><small>Pending</small></span><span><i></i><b>Pickup Scheduled</b><small>Not scheduled</small></span><span><i></i><b>Shipped</b><small>Pending</small></span><span><i></i><b>Delivered</b><small>Pending</small></span></div></section></div><footer><div><b>Payment Status</b><strong>✓ &nbsp; Paid via UPI</strong><small>Txn ID: TXN49126112355778</small></div><div><b>Shiprocket Shipment</b><small>Create shipment on Shiprocket to generate AWB</small></div><a class="seller-button outline" href="/seller-admin/orders?notice=Shipment+creation+opened">Create Shipment</a></footer></div>
+    }
+  }
+}
+
+templ ReturnRows(items []viewmodels.SellerAdminReturn) {
+  for _, item := range items {
+    <a class="return-list-row" href={ "/seller-admin/returns?notice=" + sellerNotice("Return opened: ", item.Number) }><img src={ item.Image } alt=""/><span><b>{ item.Product }</b><small>Qty: 1 &nbsp;|&nbsp; { item.Amount }</small></span><span><b>{ item.Number }</b><small>Requested on { item.Date }</small></span><em class={ "seller-chip " + sellerStatusClass(item.Status) }>{ item.Status }</em><span>{ item.Reason }</span><span class="person-detail"><span class="material-symbols-outlined">person</span>{ item.Customer }</span><span class="material-symbols-outlined">chevron_right</span></a>
+  }
+}
+
+templ LedgerRows(items []viewmodels.SellerAdminLedger) {
+  for _, row := range items {
+    <div class="ledger-row"><span>{ row.Number }</span><span>{ row.Date }</span><strong>{ row.Sale }</strong><span>{ row.Commission }</span><span class={ sellerAdjustmentClass(row.Adjustments) }>{ row.Adjustments }</span><em class={ "seller-chip " + sellerStatusClass(row.Status) }>{ row.Status }</em><strong>{ row.Net }</strong></div>
+  }
+}
+
+templ SettlementRows(items []viewmodels.SellerAdminSettlement) {
+  for _, item := range items {
+    <div class="settlement-item"><i></i><span><b>Settlement { item.Number }</b><strong>{ item.Amount }</strong><small>{ item.Orders }</small><em class={ "seller-chip " + sellerStatusClass(item.Status) }>{ item.Status }</em><small>{ item.Date }</small></span></div>
+  }
+}
+
+templ AnalyticsBars(items []viewmodels.SellerAdminBar) {
+  for _, bar := range items {
+    <span><i style={ "height:" + bar.Current + "%" }></i><b style={ "height:" + bar.Previous + "%" }></b><small>{ bar.Label }</small></span>
+  }
+}

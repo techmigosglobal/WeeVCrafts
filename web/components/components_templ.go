@@ -31,46 +31,46 @@ func Header(p viewmodels.CustomerPage) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"preview-bar\">UI preview · sample data · no real checkout or account actions</div><div class=\"utility-bar\"><span>Handmade Today. A Kinder Tomorrow. <span class=\"leaf\">◆</span></span><span class=\"utility-links\">Free shipping on orders above ₹999 <i></i> International Shipping <i></i> Support</span></div><header class=\"site-header\" x-data=\"{menu:false}\"><div class=\"header-main container\"><button class=\"icon-button menu-toggle\" type=\"button\" aria-label=\"Open menu\" @click=\"menu=!menu\">☰</button> <a class=\"wordmark\" href=\"/\" aria-label=\"WeeVCrafts home\"><span class=\"wordmark-mark\">◈</span><span><strong>WeeVCrafts</strong><small>Crafted by India. Cherished Everywhere.</small></span></a> <button class=\"location\" type=\"button\" aria-label=\"Delivery location\"><span>⌖</span><small>Deliver to<br><b>Bengaluru, Karnataka⌄</b></small></button><form class=\"global-search\" method=\"get\" action=\"/search\" hx-get=\"/search\" hx-select=\"#page\" hx-target=\"#page\" hx-push-url=\"true\"><label class=\"sr-only\" for=\"global-search\">Search products</label><input id=\"global-search\" name=\"q\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"preview-bar\" aria-hidden=\"true\">UI preview - sample data - no real checkout or account actions</div><div class=\"utility-bar\"><div class=\"container utility-inner\"><span>Handmade Today. A Kinder Tomorrow.</span><span class=\"utility-links\">Free shipping on orders above INR 999 <i></i> International Shipping <i></i> Support</span></div></div><header class=\"site-header\" x-data=\"{menu:false}\"><div class=\"header-main container\"><button class=\"icon-button menu-toggle\" type=\"button\" aria-label=\"Open menu\" @click=\"menu=!menu\"><span class=\"material-symbols-outlined\">menu</span></button> <a class=\"wordmark\" href=\"/\" aria-label=\"WeeVCrafts home\"><span class=\"wordmark-mark\">W</span><span><strong>WeeVCrafts</strong><small>Crafted by India. Cherished Everywhere.</small></span></a> <button class=\"location\" type=\"button\" aria-label=\"Delivery location\"><span class=\"material-symbols-outlined\">location_on</span><small>Deliver to<br><b>Bengaluru, Karnataka</b></small></button><form class=\"global-search\" method=\"get\" action=\"/search\" hx-get=\"/search\" hx-select=\"#page\" hx-target=\"#page\" hx-push-url=\"true\"><label class=\"sr-only\" for=\"global-search\">Search products</label><input id=\"global-search\" name=\"q\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.Query)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 13, Col: 252}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 15, Col: 252}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var2)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" placeholder=\"Search for sarees, home decor, gifts and more...\"><button type=\"submit\" aria-label=\"Search\">⌕</button></form><nav class=\"header-actions\" aria-label=\"Account actions\"><a href=\"/account\">♙<span>Account</span></a><a href=\"/wishlist\">♡<span>Wishlist<em>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" placeholder=\"Search for sarees, home decor, gifts and more...\"><button type=\"submit\" aria-label=\"Search\"><span class=\"material-symbols-outlined\">search</span></button></form><nav class=\"header-actions\" aria-label=\"Account actions\"><a href=\"/account\"><span class=\"material-symbols-outlined\">person</span><span>Account</span></a><a href=\"/wishlist\"><span class=\"material-symbols-outlined\">favorite</span><span>Wishlist<em>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(p.WishlistCount)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 14, Col: 167}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 16, Col: 269}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</em></span></a><a href=\"/cart\" id=\"cart-count\">🛒<span>Cart<em>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</em></span></a><a href=\"/cart\" id=\"cart-count\"><span class=\"material-symbols-outlined\">shopping_bag</span><span>Cart<em>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(p.CartCount)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 14, Col: 248}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 16, Col: 405}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</em></span></a></nav></div><div class=\"nav-row container\"><button class=\"mobile-menu-button\" type=\"button\" @click=\"menu=!menu\">Categories⌄</button><nav class=\"primary-nav\" aria-label=\"Primary\"><a href=\"/categories\">Categories⌄</a><a href=\"/products?category=offers\">Offers</a><a href=\"/makers/mithila-arts\">Makers</a><a href=\"/seller\">Sell on WeeVCrafts</a></nav><nav class=\"secondary-nav\" aria-label=\"Secondary\"><a href=\"/account\">Our Story</a><a href=\"/orders\">Track Order</a><a href=\"/returns\">Help</a></nav></div><div class=\"mobile-menu\" x-show=\"menu\" x-cloak @click.outside=\"menu=false\"><a href=\"/categories\">Categories</a><a href=\"/products?category=offers\">Offers</a><a href=\"/makers/mithila-arts\">Makers</a><a href=\"/account\">Account</a><a href=\"/orders\">Track Order</a></div></header>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</em></span></a></nav></div><div class=\"nav-row container\"><button class=\"mobile-menu-button\" type=\"button\" @click=\"menu=!menu\"><span class=\"material-symbols-outlined\">grid_view</span> Categories</button><nav class=\"primary-nav\" aria-label=\"Primary\"><a href=\"/categories\">Categories <span class=\"material-symbols-outlined\">expand_more</span></a><a href=\"/products?category=offers\">Offers</a><a href=\"/makers/mithila-arts\">Makers</a><a href=\"/seller\">Sell on WeeVCrafts</a></nav><nav class=\"secondary-nav\" aria-label=\"Secondary\"><a href=\"/account\">Our Story</a><a href=\"/orders\">Track Order</a><a href=\"/returns\">Help</a></nav></div><div class=\"mobile-menu\" x-show=\"menu\" x-cloak @click.outside=\"menu=false\"><a href=\"/categories\">Categories</a><a href=\"/products?category=offers\">Offers</a><a href=\"/makers/mithila-arts\">Makers</a><a href=\"/account\">Account</a><a href=\"/orders\">Track Order</a></div></header>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -99,7 +99,7 @@ func Footer(p viewmodels.CustomerPage) templ.Component {
 			templ_7745c5c3_Var5 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<section class=\"trust-strip\"><div><b>Trusted by <span>1 Lakh+</span></b><small>happy customers</small></div><div>☆ <b>4.8/5</b><small>Average rating</small></div><div>♧ <b>10,000+</b><small>Artisans supported</small></div><div>♢ <b>Secure Payments</b><small>100% safe and trusted</small></div><div>⌁ <b>Easy Returns</b><small>Hassle-free shopping</small></div><div>◎ <b>Global Shipping</b><small>To 50+ countries</small></div></section><footer class=\"site-footer\"><div class=\"container footer-grid\"><div class=\"footer-brand\"><a class=\"wordmark inverse\" href=\"/\"><span class=\"wordmark-mark\">◈</span><span><strong>WeeVCrafts</strong><small>Crafted by India. Cherished Everywhere.</small></span></a><p>A marketplace for Indian arts, crafts and sarees.<br>Supporting artisans. Preserving traditions.<br>Building a brighter, more inclusive tomorrow.</p><div class=\"socials\">◎\u3000●\u3000▶\u3000◉\u3000in</div></div><div><h3>Shop</h3><a href=\"/categories\">All Categories</a><a href=\"/products?category=arts\">Arts</a><a href=\"/products?category=crafts\">Crafts</a><a href=\"/products?category=sarees\">Sarees</a><a href=\"/products?category=offers\">Offers</a><a href=\"/products\">New Arrivals</a></div><div><h3>Help</h3><a href=\"/orders\">Track Order</a><a href=\"/returns\">Returns &amp; Refunds</a><a href=\"/shipping\">Shipping Info</a><a href=\"/size-guide\">Size Guide</a><a href=\"/faq\">FAQs</a><a href=\"/contact\">Contact Us</a></div><div><h3>About</h3><a href=\"/our-story\">Our Story</a><a href=\"/makers/mithila-arts\">Makers</a><a href=\"/sustainability\">Sustainability</a><a href=\"/press\">Press</a><a href=\"/careers\">Careers</a><a href=\"/seller\">Sell on WeeVCrafts</a></div><div class=\"newsletter\"><h3>Join our community</h3><p>Get updates on new arrivals, offers and maker stories.</p><form><input aria-label=\"Email address\" placeholder=\"Enter your email address\" type=\"email\"><button aria-label=\"Subscribe\" type=\"submit\">→</button></form><label><input type=\"checkbox\"> I agree to receive updates from WeeVCrafts</label><small>Made with <span>♥</span> in India 🇮🇳\u3000| A more handmade tomorrow ◆</small></div></div><div class=\"container footer-bottom\"><span>© 2024 WeeVCrafts. All rights reserved.</span><span>Terms &amp; Conditions\u3000|\u3000Privacy Policy\u3000|\u3000Cookie Policy</span></div></footer>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<section class=\"trust-strip\"><div><span class=\"material-symbols-outlined\">groups</span><b>Trusted by <strong>1 Lakh+</strong></b><small>happy customers</small></div><div><span class=\"material-symbols-outlined\">star</span><b>4.8/5</b><small>Average rating</small></div><div><span class=\"material-symbols-outlined\">volunteer_activism</span><b>10,000+</b><small>Artisans supported</small></div><div><span class=\"material-symbols-outlined\">verified_user</span><b>Secure Payments</b><small>100% safe and trusted</small></div><div><span class=\"material-symbols-outlined\">autorenew</span><b>Easy Returns</b><small>Hassle-free shopping</small></div><div><span class=\"material-symbols-outlined\">public</span><b>Global Shipping</b><small>To 50+ countries</small></div></section><footer class=\"site-footer\"><div class=\"container footer-grid\"><div class=\"footer-brand\"><a class=\"wordmark inverse\" href=\"/\"><span class=\"wordmark-mark\">W</span><span><strong>WeeVCrafts</strong><small>Crafted by India. Cherished Everywhere.</small></span></a><p>A marketplace for Indian arts, crafts and sarees.<br>Supporting artisans. Preserving traditions.<br>Building a brighter, more inclusive tomorrow.</p><div class=\"socials\"><span class=\"material-symbols-outlined\">photo_camera</span><span class=\"material-symbols-outlined\">play_circle</span><span class=\"material-symbols-outlined\">alternate_email</span><span class=\"material-symbols-outlined\">language</span></div></div><div><h3>Shop</h3><a href=\"/categories\">All Categories</a><a href=\"/products?category=arts\">Arts</a><a href=\"/products?category=crafts\">Crafts</a><a href=\"/products?category=sarees\">Sarees</a><a href=\"/products?category=offers\">Offers</a><a href=\"/products\">New Arrivals</a></div><div><h3>Help</h3><a href=\"/orders\">Track Order</a><a href=\"/returns\">Returns &amp; Refunds</a><a href=\"/shipping\">Shipping Info</a><a href=\"/size-guide\">Size Guide</a><a href=\"/faq\">FAQs</a><a href=\"/contact\">Contact Us</a></div><div><h3>About</h3><a href=\"/our-story\">Our Story</a><a href=\"/makers/mithila-arts\">Makers</a><a href=\"/sustainability\">Sustainability</a><a href=\"/press\">Press</a><a href=\"/careers\">Careers</a><a href=\"/seller\">Sell on WeeVCrafts</a></div><div class=\"newsletter\"><h3>Join our community</h3><p>Get updates on new arrivals, offers and maker stories.</p><form><input aria-label=\"Email address\" placeholder=\"Enter your email address\" type=\"email\"><button aria-label=\"Subscribe\" type=\"submit\"><span class=\"material-symbols-outlined\">arrow_forward</span></button></form><label><input type=\"checkbox\"> I agree to receive updates from WeeVCrafts</label><small>Made with care in India | A more handmade tomorrow</small></div></div><div class=\"container footer-bottom\"><span>Copyright 2024 WeeVCrafts. All rights reserved.</span><span>Terms &amp; Conditions | Privacy Policy | Cookie Policy</span></div></footer>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -135,7 +135,7 @@ func ProductCard(product viewmodels.Product, showAction bool) templ.Component {
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.ResolveAttributeValue(product.Slug)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 27, Col: 59}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 29, Col: 59}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var7)
 		if templ_7745c5c3_Err != nil {
@@ -148,7 +148,7 @@ func ProductCard(product viewmodels.Product, showAction bool) templ.Component {
 		var templ_7745c5c3_Var8 string
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.ResolveAttributeValue(showAction)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 27, Col: 86}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 29, Col: 86}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
 		if templ_7745c5c3_Err != nil {
@@ -161,7 +161,7 @@ func ProductCard(product viewmodels.Product, showAction bool) templ.Component {
 		var templ_7745c5c3_Var9 string
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.ResolveAttributeValue(product.ImageURL)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 27, Col: 143}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 29, Col: 143}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var9)
 		if templ_7745c5c3_Err != nil {
@@ -174,7 +174,7 @@ func ProductCard(product viewmodels.Product, showAction bool) templ.Component {
 		var templ_7745c5c3_Var10 string
 		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.ResolveAttributeValue(product.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 27, Col: 164}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 29, Col: 164}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var10)
 		if templ_7745c5c3_Err != nil {
@@ -187,7 +187,7 @@ func ProductCard(product viewmodels.Product, showAction bool) templ.Component {
 		var templ_7745c5c3_Var11 string
 		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.ResolveAttributeValue("Save " + product.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 27, Col: 254}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 29, Col: 254}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var11)
 		if templ_7745c5c3_Err != nil {
@@ -200,20 +200,20 @@ func ProductCard(product viewmodels.Product, showAction bool) templ.Component {
 		var templ_7745c5c3_Var12 string
 		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.ResolveAttributeValue("/ui/wishlist/" + product.Slug)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 27, Col: 297}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 29, Col: 297}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var12)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "\" hx-target=\"closest article\" hx-swap=\"outerHTML\">♡</button><span class=\"badge\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "\" hx-target=\"closest article\" hx-swap=\"outerHTML\"><span class=\"material-symbols-outlined\">favorite</span></button><span class=\"badge\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var13 string
 		templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(product.Badge)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 27, Col: 395}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 29, Col: 447}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 		if templ_7745c5c3_Err != nil {
@@ -226,7 +226,7 @@ func ProductCard(product viewmodels.Product, showAction bool) templ.Component {
 		var templ_7745c5c3_Var14 templ.SafeURL
 		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinURLErrs("/products/" + product.Slug)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 27, Col: 477}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 29, Col: 529}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 		if templ_7745c5c3_Err != nil {
@@ -239,7 +239,7 @@ func ProductCard(product viewmodels.Product, showAction bool) templ.Component {
 		var templ_7745c5c3_Var15 string
 		templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(product.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 27, Col: 494}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 29, Col: 546}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 		if templ_7745c5c3_Err != nil {
@@ -252,20 +252,20 @@ func ProductCard(product viewmodels.Product, showAction bool) templ.Component {
 		var templ_7745c5c3_Var16 string
 		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(product.Seller)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 27, Col: 527}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 29, Col: 579}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "</p><div class=\"rating\"><span>★</span> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "</p><div class=\"rating\"><span class=\"material-symbols-outlined\">star</span> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var17 string
 		templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(product.Rating)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 27, Col: 586}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 29, Col: 673}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 		if templ_7745c5c3_Err != nil {
@@ -278,7 +278,7 @@ func ProductCard(product viewmodels.Product, showAction bool) templ.Component {
 		var templ_7745c5c3_Var18 string
 		templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(product.Reviews)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 27, Col: 607}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 29, Col: 694}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 		if templ_7745c5c3_Err != nil {
@@ -291,7 +291,7 @@ func ProductCard(product viewmodels.Product, showAction bool) templ.Component {
 		var templ_7745c5c3_Var19 string
 		templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(product.Price)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 27, Col: 658}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 29, Col: 745}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 		if templ_7745c5c3_Err != nil {
@@ -304,7 +304,7 @@ func ProductCard(product viewmodels.Product, showAction bool) templ.Component {
 		var templ_7745c5c3_Var20 string
 		templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(product.CompareAt)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 27, Col: 693}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 29, Col: 780}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 		if templ_7745c5c3_Err != nil {
@@ -317,13 +317,13 @@ func ProductCard(product viewmodels.Product, showAction bool) templ.Component {
 		var templ_7745c5c3_Var21 string
 		templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.ResolveAttributeValue("/ui/cart/" + product.Slug)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 27, Col: 819}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 29, Col: 906}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var21)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "\" hx-select=\"#page\" hx-target=\"#page\">🛒 Add to Cart</button></div></article>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "\" hx-select=\"#page\" hx-target=\"#page\"><span class=\"material-symbols-outlined\">shopping_bag</span> Add to Cart</button></div></article>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -359,7 +359,7 @@ func CategoryCard(category viewmodels.Category) templ.Component {
 		var templ_7745c5c3_Var23 templ.SafeURL
 		templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinURLErrs("/products?category=" + category.Slug)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 31, Col: 71}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 33, Col: 71}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
 		if templ_7745c5c3_Err != nil {
@@ -372,20 +372,20 @@ func CategoryCard(category viewmodels.Category) templ.Component {
 		var templ_7745c5c3_Var24 string
 		templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.ResolveAttributeValue(category.ImageURL)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 31, Col: 102}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 33, Col: 102}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var24)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "\" alt=\"\"><span><strong>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "\" alt=\"\" loading=\"lazy\"><span><strong>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var25 string
 		templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(category.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 31, Col: 142}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 33, Col: 157}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
 		if templ_7745c5c3_Err != nil {
@@ -398,7 +398,7 @@ func CategoryCard(category viewmodels.Category) templ.Component {
 		var templ_7745c5c3_Var26 string
 		templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(category.Description)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 31, Col: 182}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 33, Col: 197}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 		if templ_7745c5c3_Err != nil {
@@ -411,13 +411,13 @@ func CategoryCard(category viewmodels.Category) templ.Component {
 		var templ_7745c5c3_Var27 string
 		templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(category.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 31, Col: 218}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 33, Col: 233}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, " →</b></span></a>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, " <span class=\"material-symbols-outlined\">arrow_forward</span></b></span></a>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

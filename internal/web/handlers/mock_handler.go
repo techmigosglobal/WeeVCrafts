@@ -7,9 +7,12 @@ import (
 
 	"github.com/a-h/templ"
 	"github.com/wecratfs/commerce/internal/web/viewmodels"
+	adminpages "github.com/wecratfs/commerce/web/admin"
 	"github.com/wecratfs/commerce/web/assets"
 	"github.com/wecratfs/commerce/web/components"
 	"github.com/wecratfs/commerce/web/pages"
+	selleradminpages "github.com/wecratfs/commerce/web/selleradmin"
+	supportportalpages "github.com/wecratfs/commerce/web/supportportal"
 )
 
 type MockHandler struct {
@@ -33,6 +36,18 @@ func (h *MockHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		h.mutation(w, r)
+		return
+	}
+	if r.URL.Path == "/admin" || strings.HasPrefix(r.URL.Path, "/admin/") {
+		h.admin(w, r)
+		return
+	}
+	if r.URL.Path == "/seller-admin" || strings.HasPrefix(r.URL.Path, "/seller-admin/") {
+		h.sellerAdmin(w, r)
+		return
+	}
+	if r.URL.Path == "/support-portal" || strings.HasPrefix(r.URL.Path, "/support-portal/") {
+		h.supportPortal(w, r)
 		return
 	}
 	page := h.page(r, w)
@@ -69,6 +84,101 @@ func (h *MockHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.render(w, r, pages.Returns(page))
 	case r.URL.Path == "/account":
 		h.render(w, r, pages.Account(page))
+	case r.URL.Path == "/login" || r.URL.Path == "/register" || r.URL.Path == "/forgot-password" || r.URL.Path == "/reset-password" || r.URL.Path == "/verify-email":
+		h.render(w, r, pages.Auth(page))
+	case r.URL.Path == "/account/profile" || r.URL.Path == "/account/addresses" || r.URL.Path == "/account/notifications" || r.URL.Path == "/account/security" || r.URL.Path == "/account/privacy" || r.URL.Path == "/account/reviews":
+		h.render(w, r, pages.AccountDetail(page))
+	case r.URL.Path == "/faq" || r.URL.Path == "/contact" || r.URL.Path == "/shipping" || r.URL.Path == "/size-guide" || r.URL.Path == "/terms" || r.URL.Path == "/privacy" || r.URL.Path == "/about" || r.URL.Path == "/our-story" || r.URL.Path == "/sustainability" || r.URL.Path == "/press" || r.URL.Path == "/careers":
+		h.render(w, r, pages.InfoPage(page))
+	case r.URL.Path == "/seller":
+		sellerPage := sellerAdminPage("/seller-admin/onboarding", r.URL.Query())
+		h.render(w, r, selleradminpages.Onboarding(sellerPage))
+	default:
+		h.notFound(w, r)
+	}
+}
+
+func (h *MockHandler) admin(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	page := adminPage(r.URL.Path, r.URL.Query())
+	switch page.Active {
+	case "dashboard":
+		h.render(w, r, adminpages.Dashboard(page))
+	case "sellers":
+		h.render(w, r, adminpages.Sellers(page))
+	case "products":
+		h.render(w, r, adminpages.Products(page))
+	case "inventory":
+		h.render(w, r, adminpages.Inventory(page))
+	case "orders":
+		h.render(w, r, adminpages.Orders(page))
+	case "returns":
+		h.render(w, r, adminpages.Returns(page))
+	case "finance":
+		h.render(w, r, adminpages.Finance(page))
+	case "support":
+		h.render(w, r, adminpages.Support(page))
+	case "marketing":
+		h.render(w, r, adminpages.Marketing(page))
+	case "analytics":
+		h.render(w, r, adminpages.Analytics(page))
+	case "security":
+		h.render(w, r, adminpages.Security(page))
+	default:
+		h.notFound(w, r)
+	}
+}
+
+func (h *MockHandler) sellerAdmin(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	page := sellerAdminPage(r.URL.Path, r.URL.Query())
+	switch page.Active {
+	case "onboarding":
+		h.render(w, r, selleradminpages.Onboarding(page))
+	case "dashboard":
+		h.render(w, r, selleradminpages.Dashboard(page))
+	case "products":
+		h.render(w, r, selleradminpages.Products(page))
+	case "inventory":
+		h.render(w, r, selleradminpages.Inventory(page))
+	case "orders":
+		h.render(w, r, selleradminpages.Orders(page))
+	case "returns":
+		h.render(w, r, selleradminpages.Returns(page))
+	case "earnings":
+		h.render(w, r, selleradminpages.Earnings(page))
+	case "analytics":
+		h.render(w, r, selleradminpages.Analytics(page))
+	case "settings":
+		h.render(w, r, selleradminpages.Settings(page))
+	case "team":
+		h.render(w, r, selleradminpages.Team(page))
+	default:
+		h.notFound(w, r)
+	}
+}
+
+func (h *MockHandler) supportPortal(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	page := supportPortalPage(r.URL.Path, r.URL.Query())
+	switch page.Active {
+	case "dashboard":
+		h.render(w, r, supportportalpages.Dashboard(page))
+	case "cases":
+		h.render(w, r, supportportalpages.Cases(page))
+	case "customers":
+		h.render(w, r, supportportalpages.Customers(page))
+	case "orders":
+		h.render(w, r, supportportalpages.Orders(page))
 	default:
 		h.notFound(w, r)
 	}
@@ -185,7 +295,7 @@ func (h *MockHandler) page(r *http.Request, w http.ResponseWriter) viewmodels.Cu
 	if len(wishlistProducts) == 0 {
 		wishlistProducts = products
 	}
-	return viewmodels.CustomerPage{Route: r.URL.Path, Title: titleFor(r.URL.Path), Query: query, Category: category, Brand: "WeeVCrafts", Tagline: "Handmade Today. A Kinder Tomorrow.", Description: "Authentic Indian arts, crafts and sarees, made with care.", Products: products, Categories: mockCategories, Sellers: mockSellers, Cart: snapshot.cart, Orders: snapshot.orders, Returns: mockReturns(), CartCount: cartCount(snapshot.cart), WishlistCount: len(wishlistProducts), Mock: true, Authenticated: true, Now: time.Now()}
+	return viewmodels.CustomerPage{Route: r.URL.Path, Title: titleFor(r.URL.Path), Query: query, Notice: r.URL.Query().Get("notice"), Category: category, Brand: "WeeVCrafts", Tagline: "Handmade Today. A Kinder Tomorrow.", Description: "Authentic Indian arts, crafts and sarees, made with care.", Products: products, Categories: mockCategories, Sellers: mockSellers, Cart: snapshot.cart, Orders: snapshot.orders, Returns: mockReturns(), CartCount: cartCount(snapshot.cart), WishlistCount: len(wishlistProducts), Mock: true, Authenticated: true, Now: time.Now()}
 }
 
 type sessionSnapshot struct {
@@ -227,6 +337,44 @@ func titleFor(path string) string {
 		return "Customer Returns & Refunds"
 	case "/account":
 		return "My Account"
+	case "/login":
+		return "Sign in"
+	case "/register":
+		return "Create an account"
+	case "/forgot-password", "/reset-password", "/verify-email":
+		return "Account recovery"
+	case "/account/profile":
+		return "Profile information"
+	case "/account/addresses":
+		return "Saved addresses"
+	case "/account/notifications":
+		return "Notification preferences"
+	case "/account/security":
+		return "Security and sessions"
+	case "/account/privacy":
+		return "Privacy preferences"
+	case "/account/reviews":
+		return "Reviews to write"
+	case "/faq":
+		return "Frequently asked questions"
+	case "/contact":
+		return "Contact WeeVCrafts"
+	case "/shipping":
+		return "Shipping information"
+	case "/size-guide":
+		return "Size guide"
+	case "/terms":
+		return "Terms and conditions"
+	case "/privacy":
+		return "Privacy policy"
+	case "/about", "/our-story":
+		return "Our story"
+	case "/sustainability":
+		return "Sustainability"
+	case "/press":
+		return "Press"
+	case "/careers":
+		return "Careers"
 	default:
 		return "WeeVCrafts"
 	}

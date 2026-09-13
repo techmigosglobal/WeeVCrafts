@@ -1,0 +1,289 @@
+package admin
+
+import (
+  "github.com/wecratfs/commerce/internal/web/viewmodels"
+)
+
+templ AdminDocument(p viewmodels.AdminPage) {
+  <!doctype html>
+  <html lang="en">
+    <head>
+      <meta charset="utf-8"/>
+      <meta name="viewport" content="width=device-width, initial-scale=1"/>
+      <meta name="robots" content="noindex,nofollow"/>
+      <title>{ p.Title } - WeeVCrafts Admin</title>
+      <link rel="stylesheet" href="/assets/css/admin.css"/>
+      <link rel="preconnect" href="https://fonts.googleapis.com"/>
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous"/>
+      <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&amp;family=Playfair+Display:wght@600;700&amp;family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400,0,0" rel="stylesheet"/>
+      <style>[x-cloak]{display:none!important}</style>
+      <script defer src="/assets/js/alpine.min.js"></script>
+      <script defer src="/assets/js/htmx.min.js"></script>
+    </head>
+    <body class="admin-body">
+      <div class="admin-shell" x-data="{sidebar:false}">
+        @Sidebar(p)
+        <div class="admin-main">
+          @AdminHeader(p)
+          <main class="admin-content">
+            <section class="admin-page-heading">
+              <div class="admin-heading-copy">
+                <p class="admin-eyebrow">WEEVCRAFTS - SUPER ADMIN</p>
+                <h1>{ p.Title }</h1>
+                <p>{ p.Subtitle }</p>
+              </div>
+              <div class="admin-heading-art"><img src="/assets/images/mock/global.webp" alt="Indian craft detail"/></div>
+              <div class="admin-heading-note"><span>More artisans.<br/>More stories.<br/><strong>A kinder<br/>tomorrow.</strong></span></div>
+            </section>
+            if p.Notice != "" {
+              <div class="admin-notice" role="status"><span class="material-symbols-outlined">check_circle</span>{ p.Notice }</div>
+            }
+            { children... }
+          </main>
+          @AdminFooter()
+        </div>
+      </div>
+    </body>
+  </html>
+}
+
+templ Sidebar(p viewmodels.AdminPage) {
+  <aside class="admin-sidebar" :class="sidebar ? 'is-open' : ''">
+    <a class="admin-brand" href="/admin" aria-label="WeeVCrafts admin dashboard"><span class="brand-mark material-symbols-outlined">eco</span><span><strong>WeeVCrafts</strong><small>Crafted by India. Cherished Everywhere.</small></span></a>
+    <nav class="admin-nav" aria-label="Admin navigation">
+      @AdminNav("dashboard", "Dashboard", "space_dashboard", p.Active, "/admin")
+      @AdminNav("sellers", "Sellers", "groups", p.Active, "/admin/sellers")
+      @AdminNav("products", "Products & Categories", "inventory_2", p.Active, "/admin/products")
+      @AdminNav("inventory", "Own Inventory", "warehouse", p.Active, "/admin/inventory")
+      @AdminNav("orders", "Orders & Shipping", "local_shipping", p.Active, "/admin/orders")
+      @AdminNav("returns", "Returns & Refunds", "undo", p.Active, "/admin/returns")
+      @AdminNav("finance", "Finance", "payments", p.Active, "/admin/finance")
+      @AdminNav("support", "Customers & Support", "support_agent", p.Active, "/admin/support")
+      @AdminNav("marketing", "Marketing & Content", "campaign", p.Active, "/admin/marketing")
+      @AdminNav("security", "Security & Roles", "admin_panel_settings", p.Active, "/admin/security")
+      @AdminNav("analytics", "Analytics & Settings", "settings", p.Active, "/admin/analytics")
+    </nav>
+    <div class="admin-impact"><span class="material-symbols-outlined">park</span><h2>Empowering<br/>Indian Crafts<br/>Globally</h2><p>More artisans.<br/>Brighter futures.</p><a href="/admin/marketing?notice=Impact+story+opened">Make an impact <span class="material-symbols-outlined">arrow_forward</span></a></div>
+  </aside>
+}
+
+templ AdminNav(key, label, icon, current, href string) {
+  <a class={ navClass(key, current) } href={ href }><span class="material-symbols-outlined">{ icon }</span><span>{ label }</span></a>
+}
+
+templ AdminHeader(p viewmodels.AdminPage) {
+  <header class="admin-header">
+    <button class="admin-menu-button" type="button" aria-label="Open admin navigation" @click="sidebar=!sidebar"><span class="material-symbols-outlined">menu</span></button>
+    <a class="admin-header-brand" href="/admin"><span class="brand-mark material-symbols-outlined">eco</span><strong>WeeVCrafts</strong></a>
+    <span class="admin-portal-pill">Admin Portal</span>
+    <form class="admin-search" action={ adminPath(p.Active) } method="get">
+      <label class="sr-only" for="admin-search">Search the admin portal</label>
+      <span class="material-symbols-outlined">search</span>
+      <input id="admin-search" name="q" value={ p.Query } placeholder="Search orders, sellers, products, customers or tickets..."/>
+    </form>
+    <button class="admin-icon-button" type="button" aria-label="Notifications"><span class="material-symbols-outlined">notifications</span><b>3</b></button>
+    <div class="admin-user"><span class="admin-avatar">RM</span><span><strong>Rohan Mehta</strong><small>Super Admin <i></i> Online</small></span><span class="material-symbols-outlined">expand_more</span></div>
+  </header>
+}
+
+templ Security(p viewmodels.AdminPage) {
+  @AdminDocument(p) {
+    <section class="security-overview">
+      @StatGrid(p)
+      <div class="security-grid">
+        <article class="admin-panel security-panel">
+          <div class="panel-heading"><div><span class="material-symbols-outlined">admin_panel_settings</span><div><h2>Role and permission matrix</h2><p>Least-privilege access across marketplace teams.</p></div></div><a class="panel-link" href="/admin/security?notice=Permission+matrix+export+queued">Export <span class="material-symbols-outlined">download</span></a></div>
+          <div class="admin-table wide security-table"><div class="table-head"><span>Role</span><span>Customer data</span><span>Catalog</span><span>Orders</span><span>Finance</span><span>Security</span><span>State</span></div><div class="table-row"><strong>Marketplace Admin</strong><span>Scoped</span><span>Manage</span><span>Manage</span><span>Read</span><span>None</span><mark class="status success">Active</mark></div><div class="table-row"><strong>Finance Operator</strong><span>Masked</span><span>None</span><span>Read</span><span>Manage</span><span>None</span><mark class="status success">Active</mark></div><div class="table-row"><strong>Support Agent</strong><span>Masked</span><span>Read</span><span>Scoped</span><span>None</span><span>None</span><mark class="status success">Active</mark></div><div class="table-row"><strong>Seller Staff</strong><span>Own seller</span><span>Assigned</span><span>Assigned</span><span>None</span><span>None</span><mark class="status success">Active</mark></div><div class="table-row"><strong>Super Admin</strong><span>Break-glass</span><span>All</span><span>All</span><span>All</span><span>Manage</span><mark class="status review">Audited</mark></div></div>
+        </article>
+        <article class="admin-panel security-panel"><div class="panel-heading"><div><span class="material-symbols-outlined">security</span><div><h2>Protected actions</h2><p>Sensitive operations require a reason and a second look.</p></div></div></div><div class="security-checklist"><span><i class="material-symbols-outlined">check_circle</i>Admin and finance accounts require MFA</span><span><i class="material-symbols-outlined">check_circle</i>Refunds and manual changes require a reason</span><span><i class="material-symbols-outlined">check_circle</i>Seller staff permissions are explicit</span><span><i class="material-symbols-outlined">check_circle</i>Support contact details remain masked</span><span><i class="material-symbols-outlined">check_circle</i>Every privileged change receives a request ID</span></div><a class="admin-button secondary" href="/admin/security?notice=Protected-action+policy+opened">Review policy</a></article>
+      </div>
+      <div class="security-grid">
+        <article class="admin-panel security-panel break-glass-panel"><div class="panel-heading"><div><span class="material-symbols-outlined">warning</span><div><h2>Break-glass access</h2><p>Temporary elevated access for incidents only.</p></div></div><mark class="status danger">Restricted</mark></div><p>Access is time-boxed, requires an incident reference and is visible to the security reviewer.</p><div class="break-glass-fields"><label>Incident reference<input value="INC-2024-0426"/></label><label>Reason<select><option>Production incident</option><option>Security investigation</option><option>Data-rights request</option></select></label></div><div class="action-row"><a class="admin-button danger" href="/admin/security?notice=Break-glass+request+recorded">Request temporary access</a><a class="admin-button secondary" href="/admin/security?notice=Break-glass+log+opened">View access log</a></div></article>
+        <article class="admin-panel security-panel"><div class="panel-heading"><div><span class="material-symbols-outlined">history</span><div><h2>Recent access events</h2><p>Security-sensitive activity in the preview workspace.</p></div></div><a class="panel-link" href="/admin/analytics?notice=Full+audit+log+opened">View audit log <span class="material-symbols-outlined">arrow_forward</span></a></div><div class="security-events"><div><span class="event-icon success"><span class="material-symbols-outlined">login</span></span><span><b>Rohan Mehta signed in</b><small>Super Admin · 2 minutes ago · Chrome on Windows</small></span><mark class="status success">MFA</mark></div><div><span class="event-icon review"><span class="material-symbols-outlined">manage_accounts</span></span><span><b>Seller permission set reviewed</b><small>Priya Sharma · Seller Staff · 18 minutes ago</small></span><mark class="status review">Logged</mark></div><div><span class="event-icon danger"><span class="material-symbols-outlined">block</span></span><span><b>Unauthorized export blocked</b><small>Support Agent attempted full payment export · 42 minutes ago</small></span><mark class="status danger">Blocked</mark></div></div></article>
+      </div>
+    </section>
+  }
+}
+
+templ AdminFooter() {
+  <footer class="admin-footer">
+    <div class="admin-trust"><span><strong>Trusted by <em>1 Lakh+</em></strong><small>happy customers</small></span><span><strong>4.8/5</strong><small>Average rating</small></span><span><strong>10,000+</strong><small>Artisans supported</small></span><span><strong>Secure Payments</strong><small>100% safe and trusted</small></span><span><strong>Easy Returns</strong><small>Hassle-free shopping</small></span><span><strong>Global Shipping</strong><small>50+ countries</small></span></div>
+    <div class="admin-footer-main"><div><a class="admin-brand inverse" href="/admin"><span class="brand-mark material-symbols-outlined">eco</span><span><strong>WeeVCrafts</strong><small>Crafted by India. Cherished Everywhere.</small></span></a><p>A marketplace for Indian arts, crafts and sarees.<br/>Supporting artisans. Preserving traditions.<br/>Building a brighter, more inclusive tomorrow.</p></div><div><h3>Admin Portal</h3><a href="/admin">Dashboard</a><a href="/admin/sellers">Sellers</a><a href="/admin/products">Products &amp; Categories</a><a href="/admin/inventory">Own Inventory</a><a href="/admin/orders">Orders &amp; Shipping</a></div><div><h3>Help</h3><a href="/admin/analytics">System Status</a><a href="/admin/support">Contact Support</a><a href="/admin/analytics">Community Guidelines</a><a href="/admin/analytics">Security</a><a href="/admin/analytics">Privacy &amp; Compliance</a></div><div><h3>About</h3><a href="/admin/marketing">Our Story</a><a href="/admin/marketing">Sustainability</a><a href="/admin/marketing">Impact</a><a href="/admin/marketing">Press</a><a href="/admin/marketing">Contact Us</a></div><div><h3>A stronger tomorrow, together.</h3><p>Empowering artisans. Creating opportunities worldwide.</p><span class="footer-leaf material-symbols-outlined">eco</span></div></div>
+    <div class="admin-footer-bottom"><span>(c) 2024 WeeVCrafts. All rights reserved.</span><span>Terms &amp; Conditions | Privacy Policy | Cookie Policy</span><span>Made with care in India</span></div>
+  </footer>
+}
+
+templ StatGrid(p viewmodels.AdminPage) {
+  <section class="admin-stat-grid">
+    for _, stat := range p.Stats {
+      @StatCard(stat)
+    }
+  </section>
+}
+
+templ StatCard(stat viewmodels.AdminStat) {
+  <article class="admin-stat-card"><span class="admin-stat-icon material-symbols-outlined">{ stat.Icon }</span><div><strong>{ stat.Value }</strong><span>{ stat.Label }</span><small class={ trendClass(stat.Positive) }><span class="material-symbols-outlined">{ trendIcon(stat.Positive) }</span>{ stat.Delta } <i>{ stat.Period }</i></small></div></article>
+}
+
+templ Toolbar(p viewmodels.AdminPage, actionLabel string) {
+  <div class="admin-toolbar"><div class="admin-tabs"><a class="active" href={ adminPath(p.Active) }>Overview</a><a href={ adminPath(p.Active) + "?range=Last+7+Days" }>Last 7 Days</a><a href={ adminPath(p.Active) + "?range=Last+90+Days" }>Last 90 Days</a></div><form class="admin-filter-form" action={ adminPath(p.Active) } method="get"><label class="sr-only" for="admin-range">Time range</label><select id="admin-range" name="range"><option>{ p.Range }</option><option>Last 7 Days</option><option>Last 90 Days</option></select><button class="admin-button secondary" type="submit">{ actionLabel }</button></form></div>
+}
+
+templ PanelHeading(icon, title, subtitle string) {
+  <div class="panel-heading"><div><span class="material-symbols-outlined">{ icon }</span><div><h2>{ title }</h2><p>{ subtitle }</p></div></div><a href="#" class="panel-link">View all <span class="material-symbols-outlined">arrow_forward</span></a></div>
+}
+
+templ Dashboard(p viewmodels.AdminPage) {
+  @AdminDocument(p) {
+    @StatGrid(p)
+    @Toolbar(p, "Apply")
+    <section class="admin-dashboard-grid">
+      <article class="admin-panel chart-panel"><div class="panel-heading"><div><span class="material-symbols-outlined">bar_chart</span><div><h2>Sales Trend</h2><p>GMV, Orders and Commission over time</p></div></div><select aria-label="Sales trend range"><option>{ p.Range }</option></select></div><div class="chart-legend"><span class="legend-red">GMV (INR Lakhs)</span><span class="legend-green">Orders</span><span class="legend-peach">Commission (INR Lakhs)</span></div><div class="admin-line-chart"><div class="chart-y"><span>20</span><span>15</span><span>10</span><span>5</span><span>0</span></div><div class="chart-bars">
+        for _, bar := range p.Bars {
+          <div class="chart-column"><div class="chart-bar" style={ "height:" + bar.Height + "%" } title={ bar.Value }></div><span>{ bar.Label }</span></div>
+        }
+      </div></div></article>
+      <article class="admin-panel donut-panel"><div class="panel-heading"><div><span class="material-symbols-outlined">donut_large</span><div><h2>Category Mix</h2><p>Share of total GMV by category</p></div></div><select aria-label="Category mix range"><option>{ p.Range }</option></select></div><div class="donut-layout"><div class="donut-chart"><strong>INR 48.2L</strong><small>Total GMV</small></div><div class="donut-legend">
+        for _, item := range p.Donut {
+          <span><i class={ "dot-" + item.Color }></i>{ item.Label }<b>{ item.Value }</b></span>
+        }
+      </div></div></article>
+    </section>
+    <section class="admin-three-grid">
+      <article class="admin-panel">@PanelHeading("person_add", "Recent Seller Applications", "")<div class="admin-table compact"><div class="table-head"><span>Seller Name</span><span>Location</span><span>Status</span></div><div class="table-row"><span class="person-cell"><img src="/assets/images/mock/saree-maroon.webp" alt=""/>Heritage Looms</span><span>Varanasi, UP</span><span class="status pending">Pending KYC</span></div><div class="table-row"><span class="person-cell"><img src="/assets/images/mock/box.webp" alt=""/>Desert Craft Co.</span><span>Jodhpur, RJ</span><span class="status pending">Pending KYC</span></div><div class="table-row"><span class="person-cell"><img src="/assets/images/mock/painting.webp" alt=""/>Kashmir Creations</span><span>Srinagar, J&amp;K</span><span class="status review">Under Review</span></div></div></article>
+      <article class="admin-panel">@PanelHeading("shopping_bag", "Recent Orders", "")<div class="admin-table compact"><div class="table-head"><span>Order #</span><span>Customer</span><span>Status</span></div><div class="table-row"><span>#WC2504267819</span><span>Priya Sharma<br/><small>INR 14,797</small></span><span class="status review">Processing</span></div><div class="table-row"><span>#WC2504267631</span><span>Rohit Mehta<br/><small>INR 2,499</small></span><span class="status success">Delivered</span></div><div class="table-row"><span>#WC2504267120</span><span>Suresh Nair<br/><small>INR 1,899</small></span><span class="status danger">Cancelled</span></div></div></article>
+      <article class="admin-panel">@PanelHeading("fact_check", "Product Approvals Queue", "")<div class="admin-table compact"><div class="table-head"><span>Product</span><span>Seller</span><span>Status</span></div><div class="table-row"><span>Ceramic Mug</span><span>Clay &amp; Co.</span><span class="status pending">Under Review</span></div><div class="table-row"><span>Chanderi Saree</span><span>Weaver's Touch</span><span class="status danger">Pending</span></div><div class="table-row"><span>Madhubani Painting</span><span>Mithila Arts</span><span class="status success">Approved</span></div></div></article>
+    </section>
+    <section class="admin-three-grid lower-grid"><article class="admin-panel">@PanelHeading("undo", "Returns & Refunds Alert", "")<div class="admin-table compact"><div class="table-head"><span>Order #</span><span>Reason</span><span>Status</span></div><div class="table-row"><span>#WC2504267522</span><span>Size issue</span><span class="status pending">Pending</span></div><div class="table-row"><span>#WC2504267311</span><span>Damaged item</span><span class="status pending">Pending</span></div><div class="table-row"><span>#WC2504267012</span><span>Not as described</span><span class="status review">Under Review</span></div></div></article><article class="admin-panel">@PanelHeading("emoji_events", "Top Sellers by GMV", "")<div class="rank-list"><span><b>1</b><strong>Weaver's Touch</strong><em>INR 7,91,340</em></span><span><b>2</b><strong>Clay &amp; Co.</strong><em>INR 5,10,220</em></span><span><b>3</b><strong>Mithila Arts</strong><em>INR 3,48,960</em></span><span><b>4</b><strong>The Rustic Home</strong><em>INR 2,96,430</em></span></div></article><article class="admin-panel health-panel">@PanelHeading("public", "Marketplace Health", "")<div class="health-grid"><span><i class="material-symbols-outlined">verified</i><b>Quality<br/>Products</b></span><span><i class="material-symbols-outlined">verified_user</i><b>Verified<br/>Sellers</b></span><span><i class="material-symbols-outlined">sentiment_satisfied</i><b>Happy<br/>Customers</b></span><span><i class="material-symbols-outlined">settings</i><b>Global<br/>Reach</b></span></div></article></section>
+  }
+}
+
+templ Sellers(p viewmodels.AdminPage) {
+  @AdminDocument(p) {
+    <div class="page-actions"><a class="admin-button primary" href="/admin/sellers?notice=Seller+invitation+form+opened"><span class="material-symbols-outlined">add</span>Add Seller Manually</a></div>
+    @StatGrid(p)
+    <section class="admin-panel"><div class="panel-tabs"><a class="active" href="/admin/sellers">Seller Applications <b>28</b></a><a href="/admin/sellers?tab=submitted">Submitted (8)</a><a href="/admin/sellers?tab=kyc">Pending KYC (9)</a><a href="/admin/sellers?tab=review">Under Review (6)</a><a href="/admin/sellers?tab=approved">Approved (4)</a></div><div class="panel-heading"><div><span class="material-symbols-outlined">groups</span><div><h2>Seller Applications Queue</h2><p>Review access, KYC status and marketplace eligibility.</p></div></div><a class="panel-link" href="/admin/sellers?notice=Showing+all+seller+applications">View all <span class="material-symbols-outlined">arrow_forward</span></a></div><div class="admin-table wide"><div class="table-head"><span>Seller Name</span><span>Location</span><span>Products</span><span>Applied On</span><span>Status</span><span>Action</span></div>
+      for _, seller := range p.Sellers {
+        <div class="table-row"><span class="person-cell"><img src={ seller.Image } alt=""/>{ seller.Name }</span><span>{ seller.Location }</span><span>{ seller.Category }</span><span>{ seller.Applied }</span><span class={ "status " + statusClass(seller.Status) }>{ seller.Status }</span><a class="table-action" href={ "/admin/sellers?notice=" + actionNotice("Viewing ", seller.Name) }>View</a></div>
+      }
+    </div></section>
+    <section class="admin-two-grid"><article class="admin-panel">@PanelHeading("verified_user", "KYC & Verification", "")<div class="verification-list"><span><i class="material-symbols-outlined">badge</i>Aadhaar Card <b>Verified</b><a href="#">View</a></span><span><i class="material-symbols-outlined">credit_card</i>PAN Card <b>Verified</b><a href="#">View</a></span><span><i class="material-symbols-outlined">description</i>GST Certificate <b>Verified</b><a href="#">View</a></span><span><i class="material-symbols-outlined">account_balance</i>Bank Account Details <b>Verified</b><a href="#">View</a></span><span><i class="material-symbols-outlined">location_on</i>Address Proof <b>Verified</b><a href="#">View</a></span></div></article><article class="admin-panel seller-profile-panel">@PanelHeading("person", "Selected Seller Profile", "")<div class="selected-seller"><img src="/assets/images/mock/saree-blue.webp" alt="Weaver's Touch"/><div><h3>Weaver's Touch <span class="status success">Active Seller</span></h3><p>Handicrafts / Sarees / Home Decor</p><p><span class="material-symbols-outlined">location_on</span> Varanasi, Uttar Pradesh / Joined 15 Jan 2023</p></div></div><div class="mini-stats"><span><b>INR 7,91,340</b><small>Total GMV</small></span><span><b>256</b><small>Total Orders</small></span><span><b>4.8 *****</b><small>Seller Rating</small></span><span><b>3.2%</b><small>Return Rate</small></span></div><div class="action-row"><a class="admin-button secondary" href="/admin/sellers?notice=Seller+profile+opened">Open Profile</a><a class="admin-button danger" href="/admin/sellers?notice=Seller+suspension+review+opened">Review Suspension</a></div></article></section>
+  }
+}
+
+templ Products(p viewmodels.AdminPage) {
+  @AdminDocument(p) {
+    <div class="page-actions"><a class="admin-button primary" href="/admin/products?notice=Product+creation+form+opened"><span class="material-symbols-outlined">add</span>Add Product</a></div>
+    @StatGrid(p)
+    <section class="admin-panel"><div class="panel-tabs"><a class="active" href="/admin/products">All Products <b>5,842</b></a><a href="/admin/products?tab=pending">Pending Approvals (326)</a><a href="/admin/products?tab=flagged">Flagged (128)</a><a href="/admin/products?tab=drafts">Drafts (402)</a></div><div class="filter-row"><form class="inline-search" action="/admin/products" method="get"><span class="material-symbols-outlined">search</span><input name="q" value={ p.Query } placeholder="Search product, SKU or seller..."/></form><select aria-label="Filter category"><option>All Categories</option><option>Sarees</option><option>Handicrafts</option><option>Home Decor</option></select><select aria-label="Filter status"><option>All Status</option><option>Pending</option><option>Approved</option><option>Flagged</option></select><a class="admin-button secondary" href="/admin/products?notice=Product+filters+applied">Apply Filters</a></div><div class="admin-table wide"><div class="table-head"><span>Product</span><span>SKU</span><span>Seller</span><span>Category</span><span>Price</span><span>Status</span><span>Submitted</span><span>Action</span></div>
+      for _, product := range p.Products {
+        <div class="table-row"><span class="person-cell"><img src={ product.Image } alt=""/>{ product.Name }</span><span>{ product.SKU }</span><span>{ product.Seller }</span><span>{ product.Category }</span><span>{ product.Price }</span><span class={ "status " + statusClass(product.Status) }>{ product.Status }</span><span>{ product.Submitted }</span><span class="row-actions"><a href={ "/admin/products?notice=" + actionNotice("Viewing ", product.Name) } aria-label="View product"><span class="material-symbols-outlined">visibility</span></a><a href="/admin/products?notice=Product+approval+opened" aria-label="Approve product"><span class="material-symbols-outlined">check</span></a><a href="/admin/products?notice=Product+flag+review+opened" aria-label="Flag product"><span class="material-symbols-outlined">flag</span></a></span></div>
+      }
+    </div></section>
+    <section class="admin-two-grid"><article class="admin-panel">@PanelHeading("account_tree", "Category Management", "Organize the catalog and keep navigation discoverable.")<div class="tree-list"><span><b>All Categories</b> (5,842)</span><span>  Sarees (1,842)</span><span>    Chanderi (423)</span><span>    Banarasi (312)</span><span>  Arts (1,204)</span><span>    Madhubani (256)</span><span>  Home Decor (2,796)</span><span>    Ceramics (438)</span></div><div class="action-row"><a class="admin-button secondary" href="/admin/products?notice=Category+manager+opened">Manage Categories</a><a class="admin-button secondary" href="/admin/products?notice=Attribute+manager+opened">Manage Attributes</a></div></article><article class="admin-panel">@PanelHeading("verified", "Claims & Compliance", "Check product claims before they reach customers.")<div class="check-list"><span><i class="material-symbols-outlined">eco</i>Handmade claim reviews <b>42 pending</b></span><span><i class="material-symbols-outlined">public</i>Export restrictions <b>12 flagged</b></span><span><i class="material-symbols-outlined">photo_camera</i>Image quality checks <b>18 pending</b></span><span><i class="material-symbols-outlined">sell</i>Pricing anomalies <b>6 flagged</b></span></div></article></section>
+  }
+}
+
+templ Inventory(p viewmodels.AdminPage) {
+  @AdminDocument(p) {
+    @StatGrid(p)
+    <section class="admin-panel inventory-hero"><div><span class="material-symbols-outlined">warehouse</span><div><h2>Own Inventory Operations</h2><p>Track availability, reservations, reorder levels and warehouse allocation.</p></div></div><strong>3 locations active</strong></section>
+    <section class="admin-panel"><div class="filter-row"><form class="inline-search" action="/admin/inventory" method="get"><span class="material-symbols-outlined">search</span><input name="q" value={ p.Query } placeholder="Search SKU or product..."/></form><select aria-label="Filter stock"><option>All Stock</option><option>Low Stock</option><option>In Stock</option></select><select aria-label="Filter warehouse"><option>All Warehouses</option><option>Noida</option><option>Varanasi</option><option>Jaipur</option></select><a class="admin-button secondary" href="/admin/inventory?notice=Inventory+filters+applied">Apply Filters</a></div><div class="admin-table wide"><div class="table-head"><span>Product</span><span>SKU</span><span>Stock</span><span>Reorder Point</span><span>Reserved</span><span>Available</span><span>Location</span><span>Inventory Value</span></div>
+      for _, item := range p.Inventory {
+        <div class="table-row"><span class="person-cell"><img src={ item.Image } alt=""/>{ item.Name }</span><span>{ item.SKU }</span><span class={ stockClass(item.Status) }>{ item.Stock }</span><span>{ item.Reorder }</span><span>{ item.Reserved }</span><span>{ item.Available }</span><span>{ item.Location }</span><strong>{ item.Value }</strong></div>
+      }
+    </div></section>
+    <section class="admin-two-grid"><article class="admin-panel">@PanelHeading("warning", "Low Stock Alerts", "Reorder before customer demand is affected.")<div class="alert-list"><span><img src="/assets/images/mock/saree-maroon.webp" alt=""/><b>Kanchipuram Silk Saree</b><span>3 units left</span><a href="/admin/inventory?notice=Restock+request+opened">Restock</a></span><span><img src="/assets/images/mock/mugs.webp" alt=""/><b>Blue Pottery Mug</b><span>5 units left</span><a href="/admin/inventory?notice=Restock+request+opened">Restock</a></span><span><img src="/assets/images/mock/painting.webp" alt=""/><b>Madhubani Painting</b><span>2 units left</span><a href="/admin/inventory?notice=Restock+request+opened">Restock</a></span></div></article><article class="admin-panel">@PanelHeading("location_on", "Warehouse Coverage", "Inventory is distributed for reliable fulfilment.")<div class="performance-meter"><span><b>Noida</b><i style="width:78%"></i><em>612 units</em></span><span><b>Varanasi</b><i style="width:62%"></i><em>428 units</em></span><span><b>Jaipur</b><i style="width:36%"></i><em>208 units</em></span></div></article></section>
+  }
+}
+
+templ Orders(p viewmodels.AdminPage) {
+  @AdminDocument(p) {
+    @StatGrid(p)
+    <section class="admin-panel"><div class="panel-tabs"><a class="active" href="/admin/orders">All Orders <b>1,842</b></a><a href="/admin/orders?tab=processing">Processing (154)</a><a href="/admin/orders?tab=shipped">Shipped (412)</a><a href="/admin/orders?tab=delivered">Delivered (1,276)</a><a href="/admin/orders?tab=rto">RTO (56)</a></div><div class="filter-row"><form class="inline-search" action="/admin/orders" method="get"><span class="material-symbols-outlined">search</span><input name="q" value={ p.Query } placeholder="Search order, customer or seller..."/></form><select aria-label="Order type"><option>Domestic + Export</option><option>Domestic</option><option>Export</option></select><select aria-label="Fulfillment status"><option>All Fulfillment</option><option>Processing</option><option>Shipped</option><option>Delivered</option></select><a class="admin-button secondary" href="/admin/orders?notice=Order+filters+applied">Apply Filters</a></div><div class="admin-table wide"><div class="table-head"><span>Order</span><span>Date</span><span>Customer</span><span>Order Value</span><span>Type</span><span>Destination</span><span>Fulfillment</span><span>Delivery</span></div>
+      for _, order := range p.Orders {
+        <div class="table-row"><span><strong>{ order.Number }</strong><small>{ order.Items }</small></span><span>{ order.Date }</span><span>{ order.Customer }</span><strong>{ order.Value }</strong><span class={ "status " + typeClass(order.Type) }>{ order.Type }</span><span>{ order.Destination }</span><span class={ "status " + statusClass(order.Fulfillment) }>{ order.Fulfillment }</span><span class={ "status " + statusClass(order.Delivery) }>{ order.Delivery }</span></div>
+      }
+    </div></section>
+    <section class="admin-panel order-detail-preview"><div class="panel-heading"><div><span class="material-symbols-outlined">local_shipping</span><div><h2>Order { p.Orders[0].Number }</h2><p>Placed on { p.Orders[0].Date } / { p.Orders[0].Items }</p></div></div><a class="admin-button secondary" href="/admin/orders?notice=Invoice+download+queued">Download Invoice</a></div><div class="detail-cards"><div><span class="material-symbols-outlined">person</span><h3>Customer</h3><strong>{ p.Orders[0].Customer }</strong><p>Customer profile and order history</p></div><div><span class="material-symbols-outlined">inventory_2</span><h3>Seller Suborders</h3><strong>2 suborders</strong><p>Weaver's Touch / Heritage Looms</p></div><div><span class="material-symbols-outlined">route</span><h3>Shipment</h3><strong>{ p.Orders[0].Fulfillment }</strong><p>Tracking sync with logistics provider</p></div><div><span class="material-symbols-outlined">payments</span><h3>Payment</h3><strong>{ p.Orders[0].Value }</strong><p>Payment captured and reconciled</p></div></div><div class="action-row"><a class="admin-button primary" href="/admin/orders?notice=Shipment+timeline+opened">Open shipment timeline</a><a class="admin-button secondary" href="/admin/support?notice=Support+case+opened+for+order">Create support case</a></div></section>
+  }
+}
+
+templ Returns(p viewmodels.AdminPage) {
+  @AdminDocument(p) {
+    @StatGrid(p)
+    <section class="admin-panel returns-workspace"><div class="return-queue"><div class="queue-heading"><h2>Return Queue</h2><span class="status pending">48 pending</span></div>
+      for i, item := range p.Returns {
+        <a class={ "return-queue-item " + returnClass(item.Status) } href={ "/admin/returns?notice=" + actionNotice("Selected return ", item.Number) }><img src={ item.Image } alt=""/><span><strong>{ item.Number }</strong><small>{ item.Customer }<br/>{ item.Reason }</small></span><span class={ "status " + statusClass(item.Status) }>{ item.Status }</span></a>
+        if i == 4 {
+          <a class="admin-button secondary" href="/admin/returns?notice=Return+queue+expanded">View all returns</a>
+        }
+      }
+    </div><div class="return-detail"><div class="detail-label"><span class="status danger">Dispute requires attention</span><span>Updated 24 Apr 2024</span></div><h2>Return request { p.Returns[0].Number }</h2><p>{ p.Returns[0].Customer } requested a return for a damaged product.</p><div class="return-product-card"><img src={ p.Returns[0].Image } alt={ p.Returns[0].Product }/><div><h3>{ p.Returns[0].Product }</h3><p>Sold by Weaver's Touch<br/>Reason: { p.Returns[0].Reason }</p><strong>{ p.Returns[0].Amount }</strong></div><dl><dt>Requested on</dt><dd>{ p.Returns[0].Date }</dd><dt>Refund method</dt><dd>Original payment</dd><dt>Seller response</dt><dd>Evidence uploaded</dd><dt>Pickup</dt><dd>Not scheduled</dd></dl></div><div class="detail-cards"><div><span class="material-symbols-outlined">photo_camera</span><h3>Evidence</h3><strong>4 images</strong><p>Customer photos and delivery proof</p></div><div><span class="material-symbols-outlined">local_shipping</span><h3>Pickup</h3><strong>Awaiting decision</strong><p>Courier pickup will be scheduled</p></div><div><span class="material-symbols-outlined">payments</span><h3>Refund</h3><strong>{ p.Returns[0].Amount }</strong><p>Refund after item inspection</p></div><div><span class="material-symbols-outlined">gavel</span><h3>Dispute</h3><strong>Admin review</strong><p>Seller and customer evidence</p></div></div><div class="decision-card"><div><h3>Decision checklist</h3><p>Confirm evidence, seller response and return-policy eligibility before issuing a refund.</p></div><div><h3>Policy outcome</h3><p>Potentially eligible for refund because the item arrived damaged.</p></div><div class="decision-actions"><a class="admin-button primary" href="/admin/returns?notice=Refund+approval+queued">Approve Refund</a><a class="admin-button secondary" href="/admin/returns?notice=Replacement+workflow+opened">Offer Replacement</a><a class="admin-button danger" href="/admin/returns?notice=Return+rejected+for+review">Reject Request</a></div></div></div></section>
+  }
+}
+
+templ Finance(p viewmodels.AdminPage) {
+  @AdminDocument(p) {
+    @StatGrid(p)
+    <section class="finance-chart-grid"><article><div class="panel-heading"><div><span class="material-symbols-outlined">monitoring</span><div><h2>Payments &amp; Commission</h2><p>Payment volume, commission revenue and refunds.</p></div></div><select aria-label="Finance chart range"><option>{ p.Range }</option></select></div><div class="chart-legend"><span class="legend-red">Payments</span><span class="legend-green">Commission</span><span class="legend-peach">Refunds</span></div><div class="admin-line-chart short"><div class="chart-y"><span>40L</span><span>30L</span><span>20L</span><span>10L</span><span>0</span></div><div class="chart-bars">
+      for _, bar := range p.Bars {
+        <div class="chart-column"><div class="chart-bar red-bar" style={ "height:" + bar.Height + "%" }></div><span>{ bar.Label }</span></div>
+      }
+    </div></div></article><article><div class="panel-heading"><div><span class="material-symbols-outlined">bolt</span><div><h2>Finance Actions</h2><p>Common operations for the finance team.</p></div></div></div><div class="quick-actions"><a href="/admin/finance?notice=Settlement+run+queued"><span class="material-symbols-outlined">account_balance</span><b>Run seller settlements</b><small>Calculate payable balances and export a report.</small></a><a href="/admin/finance?notice=Refund+reconciliation+opened"><span class="material-symbols-outlined">sync_alt</span><b>Reconcile payments</b><small>Match gateway transactions with marketplace orders.</small></a><a href="/admin/finance?notice=Finance+report+export+queued"><span class="material-symbols-outlined">download</span><b>Export finance report</b><small>Download payments, commission and refund data.</small></a></div></article></section>
+    <section class="admin-panel"><div class="panel-heading"><div><span class="material-symbols-outlined">account_balance</span><div><h2>Seller Settlements</h2><p>Transparent payout operations for every marketplace seller.</p></div></div><a class="panel-link" href="/admin/finance?notice=Showing+all+settlements">View all <span class="material-symbols-outlined">arrow_forward</span></a></div><div class="admin-table wide"><div class="table-head"><span>Seller</span><span>Orders</span><span>Gross GMV</span><span>Commission</span><span>Payable Amount</span><span>Status</span><span>Settlement Date</span><span>Action</span></div>
+      for _, settlement := range p.Settlements {
+        <div class="table-row"><span class="person-cell"><img src={ settlement.Image } alt=""/>{ settlement.Seller }</span><span>{ settlement.Orders }</span><span>{ settlement.Gross }</span><span>{ settlement.Commission }</span><strong>{ settlement.Amount }</strong><span class={ "status " + statusClass(settlement.Status) }>{ settlement.Status }</span><span>{ settlement.Date }</span><a class="table-action" href="/admin/finance?notice=Settlement+details+opened">View</a></div>
+      }
+    </div></section>
+    <section class="admin-panel"><div class="panel-heading"><div><span class="material-symbols-outlined">receipt_long</span><div><h2>Recent Transactions</h2><p>Gateway payments, commissions, refunds and payouts.</p></div></div><a class="admin-button secondary" href="/admin/finance?notice=Transaction+export+queued">Export CSV</a></div><div class="admin-table wide"><div class="table-head"><span>Date</span><span>Type</span><span>Reference</span><span>Description</span><span>Amount</span><span>Status</span></div>
+      for _, tx := range p.Transactions {
+        <div class="table-row"><span>{ tx.Date }</span><span>{ tx.Type }</span><span>{ tx.Reference }</span><span>{ tx.Description }</span><strong>{ tx.Amount }</strong><span class={ "status " + statusClass(tx.Status) }>{ tx.Status }</span></div>
+      }
+    </div></section>
+  }
+}
+
+templ Support(p viewmodels.AdminPage) {
+  @AdminDocument(p) {
+    @StatGrid(p)
+    <section class="admin-two-grid"><article class="admin-panel"><div class="panel-heading"><div><span class="material-symbols-outlined">support_agent</span><div><h2>Customer Satisfaction</h2><p>Voice of the customer across orders and support.</p></div></div></div><div class="satisfaction"><strong>96%</strong><span>*****</span><div><b>5 stars</b><i style="width:82%"></i><em>68%</em></div><div><b>4 stars</b><i style="width:55%"></i><em>22%</em></div><div><b>3 stars</b><i style="width:25%"></i><em>6%</em></div><div><b>1-2 stars</b><i style="width:12%"></i><em>4%</em></div></div></article><article class="admin-panel"><div class="panel-heading"><div><span class="material-symbols-outlined">donut_large</span><div><h2>Support Case Mix</h2><p>Open cases by reason and priority.</p></div></div></div><div class="donut-layout"><div class="donut-chart support-donut"><strong>214</strong><small>Open cases</small></div><div class="donut-legend"><span><i class="dot-green"></i>Delivery <b>42%</b></span><span><i class="dot-gold"></i>Returns <b>24%</b></span><span><i class="dot-orange"></i>Payments <b>18%</b></span><span><i class="dot-gray"></i>Other <b>16%</b></span></div></div></article></section>
+    <section class="admin-panel"><div class="panel-tabs"><a class="active" href="/admin/support">Open Cases <b>214</b></a><a href="/admin/support?tab=high">High Priority (38)</a><a href="/admin/support?tab=progress">In Progress (74)</a><a href="/admin/support?tab=resolved">Resolved (1,970)</a></div><div class="filter-row"><form class="inline-search" action="/admin/support" method="get"><span class="material-symbols-outlined">search</span><input name="q" value={ p.Query } placeholder="Search case, customer or subject..."/></form><select aria-label="Support priority"><option>All Priorities</option><option>High</option><option>Medium</option></select><a class="admin-button secondary" href="/admin/support?notice=Support+filters+applied">Apply Filters</a></div><div class="admin-table wide"><div class="table-head"><span>Case</span><span>Customer</span><span>Subject</span><span>Priority</span><span>Date</span><span>Status</span><span>Owner</span><span>Action</span></div>
+      for _, item := range p.SupportCases {
+        <div class="table-row"><span><strong>{ item.Case }</strong></span><span>{ item.Customer }</span><span>{ item.Subject }</span><span class={ "status " + priorityClass(item.Priority) }>{ item.Priority }</span><span>{ item.Date }</span><span class={ "status " + statusClass(item.Status) }>{ item.Status }</span><span>Support Team</span><a class="table-action" href="/admin/support?notice=Support+case+opened">Open</a></div>
+      }
+    </div></section>
+    <section class="admin-two-grid"><article class="admin-panel">@PanelHeading("bolt", "Support Quick Actions", "")<div class="quick-actions"><a href="/admin/support?notice=Customer+profile+opened"><span class="material-symbols-outlined">person_search</span><b>Customer lookup</b><small>View customer order and support history.</small></a><a href="/admin/support?notice=Macro+editor+opened"><span class="material-symbols-outlined">text_snippet</span><b>Response templates</b><small>Manage consistent support replies.</small></a></div></article><article class="admin-panel">@PanelHeading("policy", "Customer Care Standards", "")<div class="check-list"><span><i class="material-symbols-outlined">schedule</i>First response target <b>Under 4 hours</b></span><span><i class="material-symbols-outlined">verified</i>Refund communication <b>Always required</b></span><span><i class="material-symbols-outlined">language</i>International support <b>12 countries</b></span></div></article></section>
+  }
+}
+
+templ Marketing(p viewmodels.AdminPage) {
+  @AdminDocument(p) {
+    <div class="page-actions"><a class="admin-button primary" href="/admin/marketing?notice=Campaign+creation+form+opened"><span class="material-symbols-outlined">add</span>Create Campaign</a></div>
+    @StatGrid(p)
+    <section class="offer-cards"><a href="/admin/marketing?notice=Campaign+opened"><img src="/assets/images/mock/saree-blue.webp" alt=""/><strong>Crafted for Summer</strong><b>Up to 40% off handloom</b><span>Active</span></a><a href="/admin/marketing?notice=Campaign+opened"><img src="/assets/images/mock/box.webp" alt=""/><strong>Handmade Home Week</strong><b>Free shipping on decor</b><span>Active</span></a><a href="/admin/marketing?notice=Campaign+opened"><img src="/assets/images/mock/painting.webp" alt=""/><strong>Makers of India</strong><b>Stories that travel</b><span>Active</span></a></section>
+    <section class="admin-panel"><div class="panel-tabs"><a class="active" href="/admin/marketing">Campaigns <b>32</b></a><a href="/admin/marketing?tab=coupons">Coupons (32)</a><a href="/admin/marketing?tab=content">Content (14)</a><a href="/admin/marketing?tab=collections">Collections (8)</a></div><div class="panel-heading"><div><span class="material-symbols-outlined">campaign</span><div><h2>Campaign Performance</h2><p>Plan promotions, measure reach and connect customers with makers.</p></div></div><a class="panel-link" href="/admin/marketing?notice=Campaign+report+opened">View report <span class="material-symbols-outlined">arrow_forward</span></a></div><div class="admin-table wide"><div class="table-head"><span>Campaign</span><span>Type</span><span>Start</span><span>End</span><span>Channel</span><span>Reach</span><span>Revenue</span><span>Status</span></div>
+      for _, campaign := range p.Campaigns {
+        <div class="table-row"><span><strong>{ campaign.Name }</strong></span><span>{ campaign.Type }</span><span>{ campaign.Start }</span><span>{ campaign.End }</span><span>{ campaign.Channel }</span><span>{ campaign.Reach }</span><strong>{ campaign.Revenue }</strong><span class={ "status " + statusClass(campaign.Status) }>{ campaign.Status }</span></div>
+      }
+    </div></section>
+    <section class="admin-two-grid homepage-content"><article class="admin-panel"><div class="panel-heading"><div><span class="material-symbols-outlined">web</span><div><h2>Homepage Content</h2><p>Manage the stories and collections customers see first.</p></div></div><a class="admin-button secondary" href="/admin/marketing?notice=Homepage+editor+opened">Edit page</a></div><div class="content-preview"><img src="/assets/images/mock/global.webp" alt="Indian craft marketplace"/><div><h3>From Indian Hands<br/>to Global Homes</h3><p>Featured homepage story / Published</p><a class="admin-button primary" href="/admin/marketing?notice=Story+editor+opened">Edit story</a></div></div></article><article class="admin-panel"><div class="panel-heading"><div><span class="material-symbols-outlined">collections_bookmark</span><div><h2>Featured Collections</h2><p>Curated catalog groups and maker spotlights.</p></div></div></div><div class="collection-images"><img src="/assets/images/mock/saree-maroon.webp" alt=""/><img src="/assets/images/mock/mugs.webp" alt=""/><img src="/assets/images/mock/box.webp" alt=""/></div><div class="content-columns"><div><h3>Publishing checklist</h3><span>Hero banner <b>Ready</b></span><span>Maker story <b>Ready</b></span><span>Collection links <b>Ready</b></span></div><div><h3>Moderation</h3><span>Scheduled content <b>4</b></span><span>Pending review <b>2</b></span><span>Expired content <b>1</b></span></div></div></article></section>
+  }
+}
+
+templ Analytics(p viewmodels.AdminPage) {
+  @AdminDocument(p) {
+    @StatGrid(p)
+    <section class="analytics-chart-grid"><article><div class="panel-heading"><div><span class="material-symbols-outlined">speed</span><div><h2>Marketplace Performance</h2><p>Core business indicators.</p></div></div></div><div class="performance-meter"><span><b>GMV Growth</b><i style="width:84%"></i><em>18%</em></span><span><b>Orders Growth</b><i style="width:72%"></i><em>16%</em></span><span><b>Seller Growth</b><i style="width:64%"></i><em>14%</em></span><span><b>Repeat Customers</b><i style="width:58%"></i><em>42%</em></span></div></article><article><div class="panel-heading"><div><span class="material-symbols-outlined">public</span><div><h2>Export Destinations</h2><p>Orders by international market.</p></div></div></div><div class="destination-list"><span><b>[US] USA</b><i style="width:82%"></i><strong>32%</strong></span><span><b>[UK] UK</b><i style="width:61%"></i><strong>24%</strong></span><span><b>[AE] UAE</b><i style="width:45%"></i><strong>18%</strong></span><span><b>[AU] Australia</b><i style="width:32%"></i><strong>12%</strong></span><span><b>[CA] Canada</b><i style="width:24%"></i><strong>8%</strong></span></div></article><article><div class="panel-heading"><div><span class="material-symbols-outlined">undo</span><div><h2>Returns Rate</h2><p>Returns compared with completed orders.</p></div></div></div><div class="return-meter"><strong>3.0%</strong><small>Current return rate</small><i></i><b>0.8% lower than last month</b></div></article></section>
+    <section class="analytics-chart-grid bottom"><article class="admin-panel"><div class="panel-heading"><div><span class="material-symbols-outlined">history</span><div><h2>Admin Audit Log</h2><p>Traceable changes across sensitive operations.</p></div></div><a class="panel-link" href="/admin/analytics?notice=Audit+log+export+queued">Export <span class="material-symbols-outlined">download</span></a></div><div class="admin-table wide"><div class="table-head"><span>Date</span><span>User</span><span>Action</span><span>Entity</span><span>Details</span><span>IP</span></div>
+      for _, entry := range p.AuditEntries {
+        <div class="table-row"><span>{ entry.Date }</span><span>{ entry.User }</span><span class={ "status " + auditClass(entry.Action) }>{ entry.Action }</span><span>{ entry.Entity }</span><span>{ entry.Details }</span><span>{ entry.IP }</span></div>
+      }
+    </div></article><article class="admin-panel"><div class="panel-heading"><div><span class="material-symbols-outlined">settings</span><div><h2>Marketplace Settings</h2><p>Rules that govern the customer and seller experience.</p></div></div><a class="panel-link" href="/admin/analytics?notice=Settings+editor+opened">Manage <span class="material-symbols-outlined">arrow_forward</span></a></div><div class="config-list">
+      for _, config := range p.Configs {
+        <a href="/admin/analytics?notice=Setting+editor+opened"><span class="material-symbols-outlined">{ config.Icon }</span><span><strong>{ config.Name }</strong><b>{ config.Value }</b><small>{ config.Detail }</small></span><i class="material-symbols-outlined">chevron_right</i></a>
+      }
+    </div></article><article class="admin-panel"><div class="panel-heading"><div><span class="material-symbols-outlined">health_and_safety</span><div><h2>System Health</h2><p>Operational checks for the admin team.</p></div></div></div><div class="check-list"><span><i class="material-symbols-outlined">database</i>PostgreSQL <b>Healthy</b></span><span><i class="material-symbols-outlined">memory</i>Redis cache <b>Healthy</b></span><span><i class="material-symbols-outlined">search</i>Search index <b>Healthy</b></span><span><i class="material-symbols-outlined">cloud</i>Object storage <b>Healthy</b></span><span><i class="material-symbols-outlined">payments</i>Payment gateway <b>Sandbox</b></span></div></article></section>
+  }
+}
+
