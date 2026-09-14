@@ -2,20 +2,25 @@
 <!doctype html>
 <html lang="en">
 <head><title>{{.Title}}</title>{{template "head" .}}</head>
-<body class="bg-paper text-ink">
+<body class="bg-paper text-ink" hx-boost="true" hx-target="#page" hx-select="#page" hx-swap="outerHTML" hx-indicator="#page-loading">
   {{template "header" .}}
-  <main class="mx-auto max-w-screen-2xl px-5 py-12 lg:px-10 lg:py-16">
+  <main id="page" class="mx-auto max-w-screen-2xl px-5 py-12 lg:px-10 lg:py-16">{{template "cart-content" .}}</main>
+  {{template "footer" .}}
+</body>
+</html>
+{{end}}
+
+{{define "cart-content"}}
+<div id="cart-content" class="mx-auto max-w-screen-2xl">
     <div class="flex flex-wrap items-end justify-between gap-5"><div><p class="text-sm font-semibold uppercase tracking-[0.18em] text-citrus">Your ritual, gathered</p><h1 class="mt-3 font-display text-5xl text-indigo">Cart</h1></div><span class="text-sm text-ink/60">{{.Cart.ItemCount}} items</span></div>
     {{if .Cart.Items}}
     <div class="mt-10 grid gap-10 lg:grid-cols-[1fr_360px]">
       <section class="grid gap-4" aria-label="Cart items">
-        {{range .Cart.Items}}<article class="flex flex-wrap items-center gap-5 rounded-2xl border border-line bg-white p-5"><div class="grid h-24 w-24 place-items-center rounded-xl bg-mist text-xs text-ink/45">{{.SKU}}</div><div class="min-w-[12rem] flex-1"><a class="font-semibold text-indigo" href="/products/{{.ProductSlug}}">{{.ProductName}}</a><p class="mt-1 text-sm text-ink/60">{{money .UnitPriceCents}} · {{.Available}} available</p></div><form class="flex items-center gap-2" method="post" action="/cart/update"><input type="hidden" name="csrf_token" value="{{$.CSRFToken}}"><input type="hidden" name="variant_id" value="{{.VariantID}}"><label class="sr-only" for="quantity-{{.VariantID}}">Quantity for {{.ProductName}}</label><input class="field w-20" id="quantity-{{.VariantID}}" name="quantity" type="number" min="1" max="99" value="{{.Quantity}}"><button class="button-secondary" type="submit">Update</button></form><form method="post" action="/cart/remove"><input type="hidden" name="csrf_token" value="{{$.CSRFToken}}"><input type="hidden" name="variant_id" value="{{.VariantID}}"><button class="text-sm font-semibold text-red-700 underline" type="submit">Remove</button></form></article>{{end}}
+        {{range .Cart.Items}}<article id="cart-item-{{.VariantID}}" class="flex flex-wrap items-center gap-5 rounded-2xl border border-line bg-white p-5"><div class="grid h-24 w-24 place-items-center rounded-xl bg-mist text-xs text-ink/45">{{.SKU}}</div><div class="min-w-[12rem] flex-1"><a class="font-semibold text-indigo" href="/products/{{.ProductSlug}}">{{.ProductName}}</a><p class="mt-1 text-sm text-ink/60">{{money .UnitPriceCents}} · {{.Available}} available</p></div><form class="flex items-center gap-2" method="post" action="/cart/update" hx-post="/cart/update" hx-target="#cart-content" hx-select="#cart-content" hx-swap="outerHTML" hx-indicator="#page-loading" hx-disabled-elt="this"><input type="hidden" name="csrf_token" value="{{$.CSRFToken}}"><input type="hidden" name="variant_id" value="{{.VariantID}}"><label class="sr-only" for="quantity-{{.VariantID}}">Quantity for {{.ProductName}}</label><input class="field w-20" id="quantity-{{.VariantID}}" name="quantity" type="number" min="1" max="99" value="{{.Quantity}}"><button class="button-secondary" type="submit">Update</button></form><form method="post" action="/cart/remove" hx-post="/cart/remove" hx-target="#cart-content" hx-select="#cart-content" hx-swap="outerHTML" hx-indicator="#page-loading" hx-disabled-elt="this"><input type="hidden" name="csrf_token" value="{{$.CSRFToken}}"><input type="hidden" name="variant_id" value="{{.VariantID}}"><button class="text-sm font-semibold text-red-700 underline" type="submit">Remove</button></form>{{if $.Authenticated}}<form method="post" action="/cart/move-to-wishlist" hx-post="/cart/move-to-wishlist" hx-target="#cart-content" hx-select="#cart-content" hx-swap="outerHTML" hx-indicator="#page-loading" hx-disabled-elt="this"><input type="hidden" name="csrf_token" value="{{$.CSRFToken}}"><input type="hidden" name="variant_id" value="{{.VariantID}}"><input type="hidden" name="product_id" value="{{.ProductID}}"><button class="text-sm font-semibold text-indigo underline" type="submit">Move to wishlist</button></form>{{end}}</article>{{end}}
       </section>
       <aside class="h-fit rounded-2xl border border-line bg-white p-6"><p class="text-sm font-semibold uppercase tracking-[0.14em] text-ink/50">Summary</p><div class="mt-6 flex justify-between text-sm"><span>Subtotal</span><strong>{{money .Cart.SubtotalCents}}</strong></div><p class="mt-3 text-xs leading-5 text-ink/55">Final shipping and availability are recalculated at checkout.</p><a class="button-primary mt-7 w-full" href="/checkout">Continue to checkout</a></aside>
     </div>
     {{else}}<div class="empty-state mt-10"><span class="empty-state__mark" aria-hidden="true">◌</span><h2 class="font-display text-3xl text-indigo">Your cart is empty</h2><p class="mt-3 max-w-md text-sm leading-6 text-ink/65">Browse the real catalogue and add something when a product feels right.</p><a class="button-primary mt-7 inline-flex" href="/products">Browse products</a></div>{{end}}
-  </main>
-  {{template "footer" .}}
-</body>
-</html>
+  </div>
+</div>
 {{end}}

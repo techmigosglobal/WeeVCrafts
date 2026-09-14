@@ -1,13 +1,16 @@
 package viewmodels
 
-import "time"
+import (
+	"net/url"
+	"time"
+)
 
 type Product struct {
-	Slug, Name, Seller, Location, Category, ImageURL, Badge string
-	Price, CompareAt                                        string
-	Rating                                                  string
-	Reviews                                                 int
-	InStock                                                 bool
+	Slug, Name, Seller, Location, Category, ImageURL, ImageSrcSet, Badge string
+	Price, CompareAt, Discount                                           string
+	Rating                                                               string
+	Reviews                                                              int
+	InStock                                                              bool
 }
 
 type Seller struct {
@@ -16,8 +19,14 @@ type Seller struct {
 	Products                                    int
 }
 
+type Brand struct {
+	Slug, Name, Tagline, Location, ImageURL, Description string
+	Products                                             int
+}
+
 type Category struct {
 	Slug, Name, Description, ImageURL string
+	Products                          int
 }
 
 type CartItem struct {
@@ -32,6 +41,10 @@ type Order struct {
 	Items                         []CartItem
 }
 
+type PaymentActivity struct {
+	Reference, Amount, Date, Method, OrderNumber, Status string
+}
+
 type Return struct {
 	ID, Status, Reason, Requested, ProductName, ImageURL, OrderNumber string
 	Amount                                                            string
@@ -42,18 +55,26 @@ type Address struct {
 }
 
 type CustomerPage struct {
-	Route, Title, Query, Category, Sort, Notice string
-	Brand, Tagline, Description                 string
-	Products                                    []Product
-	Categories                                  []Category
-	Sellers                                     []Seller
-	Cart                                        []CartItem
-	Orders                                      []Order
-	Returns                                     []Return
-	Address                                     Address
-	CartCount, WishlistCount                    int
-	Page, Pages                                 int
-	CheckoutStep                                int
-	Authenticated, Mock                         bool
-	Now                                         time.Time
+	Route, Title, Query, Category, Sort, Notice     string
+	Brand, Tagline, Description                     string
+	Filters                                         url.Values
+	Product                                         Product
+	SavedProducts                                   []Product
+	ItemsTotal, ShippingTotal, DiscountTotal, Total string
+	Products                                        []Product
+	FilterCounts                                    map[string]int
+	Categories                                      []Category
+	Sellers                                         []Seller
+	Brands                                          []Brand
+	Cart                                            []CartItem
+	Orders                                          []Order
+	PaymentActivity                                 []PaymentActivity
+	SelectedOrder                                   Order
+	Returns                                         []Return
+	Address                                         Address
+	CartCount, WishlistCount                        int
+	Page, Pages                                     int
+	CheckoutStep                                    int
+	Authenticated, Mock                             bool
+	Now                                             time.Time
 }

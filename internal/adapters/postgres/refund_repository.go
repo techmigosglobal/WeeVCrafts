@@ -175,7 +175,7 @@ func (r *PaymentRepository) CompleteRefund(ctx context.Context, refundID int64, 
 			"provider_payment_id": providerPaymentID,
 			"status":              refund.Status,
 		})
-		if _, err := tx.Exec(transactionContext, `INSERT INTO audit_logs (action, resource_type, resource_id, metadata) VALUES ($1, 'order', $2, $3)`, "payment.refund_"+refund.Status, fmt.Sprint(orderID), metadata); err != nil {
+		if _, err := tx.Exec(transactionContext, `INSERT INTO audit_logs (action, resource_type, resource_id, request_id, metadata) VALUES ($1, 'order', $2, $3, $4)`, "payment.refund_"+refund.Status, fmt.Sprint(orderID), ports.RequestID(transactionContext), metadata); err != nil {
 			return err
 		}
 		return tx.QueryRow(transactionContext, refundRecordSelect, refundID).Scan(

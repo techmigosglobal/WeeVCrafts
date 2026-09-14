@@ -4,21 +4,21 @@ package viewmodels
 // intentionally fixture-backed until the live admin transport is connected to
 // the application services in cmd/res2.
 type AdminPage struct {
-	Active, Title, Subtitle, Query, Range, Notice string
-	Stats                                         []AdminStat
-	Bars                                          []AdminBar
-	Donut                                         []AdminDonut
-	Sellers                                       []AdminSeller
-	Products                                      []AdminProduct
-	Inventory                                     []AdminInventory
-	Orders                                        []AdminOrder
-	Returns                                       []AdminReturn
-	Settlements                                   []AdminSettlement
-	Transactions                                  []AdminTransaction
-	SupportCases                                  []AdminSupportCase
-	Campaigns                                     []AdminCampaign
-	AuditEntries                                  []AdminAuditEntry
-	Configs                                       []AdminConfig
+	Active, Workspace, Title, Subtitle, Query, Range, Notice string
+	Stats                                                    []AdminStat
+	Bars                                                     []AdminBar
+	Donut                                                    []AdminDonut
+	Sellers                                                  []AdminSeller
+	Products                                                 []AdminProduct
+	Inventory                                                []AdminInventory
+	Orders                                                   []AdminOrder
+	Returns                                                  []AdminReturn
+	Settlements                                              []AdminSettlement
+	Transactions                                             []AdminTransaction
+	SupportCases                                             []AdminSupportCase
+	Campaigns                                                []AdminCampaign
+	AuditEntries                                             []AdminAuditEntry
+	Configs                                                  []AdminConfig
 }
 
 type AdminStat struct {
@@ -83,16 +83,16 @@ type AdminConfig struct {
 // feeds it representative data until the live seller application services are
 // connected; every record in this view model belongs to Weaver's Touch.
 type SellerAdminPage struct {
-	Active, Title, Subtitle, Query, Range, Tab, Notice string
-	Stats                                              []SellerAdminStat
-	Products                                           []SellerAdminProduct
-	Inventory                                          []SellerAdminInventory
-	Orders                                             []SellerAdminOrder
-	Returns                                            []SellerAdminReturn
-	Ledger                                             []SellerAdminLedger
-	Settlements                                        []SellerAdminSettlement
-	AnalyticsBars                                      []SellerAdminBar
-	Team                                               []SellerTeamMember
+	Active, Workspace, Title, Subtitle, Query, Range, Tab, Notice string
+	Stats                                                         []SellerAdminStat
+	Products                                                      []SellerAdminProduct
+	Inventory                                                     []SellerAdminInventory
+	Orders                                                        []SellerAdminOrder
+	Returns                                                       []SellerAdminReturn
+	Ledger                                                        []SellerAdminLedger
+	Settlements                                                   []SellerAdminSettlement
+	AnalyticsBars                                                 []SellerAdminBar
+	Team                                                          []SellerTeamMember
 }
 
 type SellerAdminStat struct {

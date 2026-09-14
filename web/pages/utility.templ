@@ -7,7 +7,7 @@ templ Auth(p viewmodels.CustomerPage) {
     <section class="container utility-shell auth-shell">
       <div class="utility-card auth-card">
         if p.Notice != "" {
-          <div class="utility-notice" role="status"><span class="material-symbols-outlined">check_circle</span>{ p.Notice }</div>
+          <div class="utility-notice" role="status"><span class="material-symbols-outlined" aria-hidden="true">check_circle</span>{ p.Notice }</div>
         }
         if p.Route == "/login" {
           @AuthHeading("WELCOME BACK", "Sign in to WeeVCrafts", "Keep your saved pieces, orders and maker stories close.")
@@ -15,7 +15,7 @@ templ Auth(p viewmodels.CustomerPage) {
             <label>Email address<input name="email" type="email" required/></label>
             <label>Password<input name="password" type="password" required/></label>
             <label class="check-line"><input type="checkbox" name="remember"/> Keep me signed in on this device</label>
-            <button class="primary-button full" type="submit">Sign in <span class="material-symbols-outlined">arrow_forward</span></button>
+            <button class="primary-button full" type="submit">Sign in <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></button>
           </form>
           <div class="auth-links"><a href="/forgot-password">Forgot your password?</a><span>New here? <a href="/register">Create an account</a></span></div>
         } else if p.Route == "/register" {
@@ -25,14 +25,14 @@ templ Auth(p viewmodels.CustomerPage) {
             <label>Email address<input name="email" type="email" required/></label>
             <label>Password<input name="password" type="password" minlength="12" required/></label>
             <label class="check-line"><input type="checkbox" name="consent" required/> I agree to the privacy notice and account terms</label>
-            <button class="primary-button full" type="submit">Create account <span class="material-symbols-outlined">arrow_forward</span></button>
+            <button class="primary-button full" type="submit">Create account <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></button>
           </form>
           <div class="auth-links"><span>Already have an account? <a href="/login">Sign in</a></span></div>
         } else if p.Route == "/forgot-password" {
           @AuthHeading("ACCOUNT RECOVERY", "Reset your password", "Enter your email and we will guide you through the next step.")
           <form class="utility-form" action="/forgot-password?notice=Recovery+request+preview+submitted" method="get">
             <label>Email address<input name="email" type="email" required/></label>
-            <button class="primary-button full" type="submit">Send recovery link <span class="material-symbols-outlined">mail</span></button>
+            <button class="primary-button full" type="submit">Send recovery link <span class="material-symbols-outlined" aria-hidden="true">mail</span></button>
           </form>
           <div class="auth-links"><a href="/login">Return to sign in</a></div>
         } else if p.Route == "/reset-password" {
@@ -40,15 +40,15 @@ templ Auth(p viewmodels.CustomerPage) {
           <form class="utility-form" action="/reset-password?notice=Password+reset+preview+submitted" method="get">
             <label>New password<input name="password" type="password" minlength="12" required/></label>
             <label>Confirm password<input name="confirm_password" type="password" minlength="12" required/></label>
-            <button class="primary-button full" type="submit">Update password <span class="material-symbols-outlined">lock_reset</span></button>
+            <button class="primary-button full" type="submit">Update password <span class="material-symbols-outlined" aria-hidden="true">lock_reset</span></button>
           </form>
         } else {
           @AuthHeading("VERIFY YOUR EMAIL", "Your account is almost ready", "Confirm your email to protect your account and receive order updates.")
-          <div class="utility-callout"><span class="material-symbols-outlined">mark_email_read</span><div><strong>Check your inbox</strong><p>The verification link is valid for a limited time.</p></div></div>
-          <a class="primary-button full" href="/verify-email?notice=Verification+preview+confirmed">I have verified my email <span class="material-symbols-outlined">check</span></a>
+          <div class="utility-callout"><span class="material-symbols-outlined" aria-hidden="true">mark_email_read</span><div><strong>Check your inbox</strong><p>The verification link is valid for a limited time.</p></div></div>
+          <a class="primary-button full" href="/verify-email?notice=Verification+preview+confirmed">I have verified my email <span class="material-symbols-outlined" aria-hidden="true">check</span></a>
           <a class="outline-button full utility-secondary-action" href="/verify-email?notice=Verification+email+preview+resent">Resend verification email</a>
         }
-        <p class="preview-disclaimer"><span class="material-symbols-outlined">visibility</span> Preview mode: this form demonstrates the flow without creating an account or sending email.</p>
+        <p class="preview-disclaimer"><span class="material-symbols-outlined" aria-hidden="true">visibility</span> Preview mode: this form demonstrates the flow without creating an account or sending email.</p>
       </div>
     </section>
   }
@@ -65,11 +65,11 @@ templ InfoPage(p viewmodels.CustomerPage) {
     <section class="container utility-shell info-shell">
       @Breadcrumb("Home", p.Title)
       if p.Notice != "" {
-        <div class="utility-notice" role="status"><span class="material-symbols-outlined">check_circle</span>{ p.Notice }</div>
+        <div class="utility-notice" role="status"><span class="material-symbols-outlined" aria-hidden="true">check_circle</span>{ p.Notice }</div>
       }
       <div class="info-hero">
         <div><p class="eyebrow">WEEVCRAFTS GUIDE</p><h1>{ p.Title }</h1><p>Clear, helpful information for choosing, receiving and caring for something handmade.</p></div>
-        <img src="/assets/images/customer/maker-mithila.png" alt="Indian craft studio"/>
+        <img src="/assets/images/customer/maker-mithila.webp" alt="Indian craft studio" width="1254" height="1254"/>
       </div>
       if p.Route == "/faq" {
         @FaqContent()
@@ -86,24 +86,24 @@ templ InfoPage(p viewmodels.CustomerPage) {
 
 templ FaqContent() {
   <div class="faq-list">
-    <details open><summary>How do I know a product is handmade?<span class="material-symbols-outlined">expand_more</span></summary><p>Each maker profile shares their location, process and product story.</p></details>
-    <details><summary>How long does delivery take?<span class="material-symbols-outlined">expand_more</span></summary><p>Most domestic orders arrive in 4–6 days after dispatch. The estimate is shown on the product page.</p></details>
-    <details><summary>Can I return an order?<span class="material-symbols-outlined">expand_more</span></summary><p>Eligible items can be requested for return within the policy window.</p></details>
-    <details><summary>Do you ship internationally?<span class="material-symbols-outlined">expand_more</span></summary><p>Selected products can travel to more than 50 countries.</p></details>
-    <details><summary>How can I sell on WeeVCrafts?<span class="material-symbols-outlined">expand_more</span></summary><p>Start with the seller onboarding preview and prepare your verification documents.</p></details>
+    <details open><summary>How do I know a product is handmade?<span class="material-symbols-outlined" aria-hidden="true">expand_more</span></summary><p>Each maker profile shares their location, process and product story.</p></details>
+    <details><summary>How long does delivery take?<span class="material-symbols-outlined" aria-hidden="true">expand_more</span></summary><p>Most domestic orders arrive in 4–6 days after dispatch. The estimate is shown on the product page.</p></details>
+    <details><summary>Can I return an order?<span class="material-symbols-outlined" aria-hidden="true">expand_more</span></summary><p>Eligible items can be requested for return within the policy window.</p></details>
+    <details><summary>Do you ship internationally?<span class="material-symbols-outlined" aria-hidden="true">expand_more</span></summary><p>Selected products can travel to more than 50 countries.</p></details>
+    <details><summary>How can I sell on WeeVCrafts?<span class="material-symbols-outlined" aria-hidden="true">expand_more</span></summary><p>Start with the seller onboarding preview and prepare your verification documents.</p></details>
   </div>
-  <section class="info-contact-strip"><span class="material-symbols-outlined">support_agent</span><div><h2>Still need a hand?</h2><p>Our customer care team can help with an order, return or product question.</p></div><a class="primary-button" href="/contact">Contact us</a></section>
+  <section class="info-contact-strip"><span class="material-symbols-outlined" aria-hidden="true">support_agent</span><div><h2>Still need a hand?</h2><p>Our customer care team can help with an order, return or product question.</p></div><a class="primary-button" href="/contact">Contact us</a></section>
 }
 
 templ ContactContent() {
   <div class="contact-grid">
-    <section class="utility-card"><h2>Send us a note</h2><p>Share a little context so the right team can respond.</p><form class="utility-form" action="/contact?notice=Contact+message+preview+submitted" method="get"><label>Your name<input name="name" required/></label><label>Email address<input name="email" type="email" required/></label><label>How can we help?<select name="topic"><option>Order support</option><option>Returns and refunds</option><option>Product question</option><option>Seller support</option></select></label><label>Message<textarea name="message" rows="5" required></textarea></label><button class="primary-button" type="submit">Send message <span class="material-symbols-outlined">arrow_forward</span></button></form></section>
-    <aside class="info-side-list"><div><span class="material-symbols-outlined">schedule</span><h3>Customer care hours</h3><p>Monday–Saturday<br/>9:00 AM–7:00 PM IST</p></div><div><span class="material-symbols-outlined">mail</span><h3>Email</h3><p>hello@weevcrafts.com<br/>Usually answered within 24 hours.</p></div><div><span class="material-symbols-outlined">chat</span><h3>Quick answers</h3><p>Browse the <a href="/faq">FAQs</a> first.</p></div></aside>
+    <section class="utility-card"><h2>Send us a note</h2><p>Share a little context so the right team can respond.</p><form class="utility-form" action="/contact?notice=Contact+message+preview+submitted" method="get"><label>Your name<input name="name" required/></label><label>Email address<input name="email" type="email" required/></label><label>How can we help?<select name="topic"><option>Order support</option><option>Returns and refunds</option><option>Product question</option><option>Seller support</option></select></label><label>Message<textarea name="message" rows="5" required></textarea></label><button class="primary-button" type="submit">Send message <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></button></form></section>
+    <aside class="info-side-list"><div><span class="material-symbols-outlined" aria-hidden="true">schedule</span><h3>Customer care hours</h3><p>Monday–Saturday<br/>9:00 AM–7:00 PM IST</p></div><div><span class="material-symbols-outlined" aria-hidden="true">mail</span><h3>Email</h3><p>hello@weevcrafts.com<br/>Usually answered within 24 hours.</p></div><div><span class="material-symbols-outlined" aria-hidden="true">chat</span><h3>Quick answers</h3><p>Browse the <a href="/faq">FAQs</a> first.</p></div></aside>
   </div>
 }
 
 templ StoryContent() {
-  <div class="story-content utility-card"><p class="utility-lead">A marketplace that makes more room for Indian craft, independent makers and the people who choose to live with meaning.</p><div class="story-columns"><div><span class="material-symbols-outlined">groups</span><h2>People before products</h2><p>We keep the maker's name, place and process close to every piece.</p></div><div><span class="material-symbols-outlined">eco</span><h2>Made to last</h2><p>We celebrate useful objects, careful materials and traditions that deserve a future.</p></div><div><span class="material-symbols-outlined">public</span><h2>From India, everywhere</h2><p>We help local craft find thoughtful homes across India and around the world.</p></div></div><a class="primary-button" href="/makers/mithila-arts">Meet the makers <span class="material-symbols-outlined">arrow_forward</span></a></div>
+  <div class="story-content utility-card"><p class="utility-lead">A marketplace that makes more room for Indian craft, independent makers and the people who choose to live with meaning.</p><div class="story-columns"><div><span class="material-symbols-outlined" aria-hidden="true">groups</span><h2>People before products</h2><p>We keep the maker's name, place and process close to every piece.</p></div><div><span class="material-symbols-outlined" aria-hidden="true">eco</span><h2>Made to last</h2><p>We celebrate useful objects, careful materials and traditions that deserve a future.</p></div><div><span class="material-symbols-outlined" aria-hidden="true">public</span><h2>From India, everywhere</h2><p>We help local craft find thoughtful homes across India and around the world.</p></div></div><a class="primary-button" href="/makers/mithila-arts">Meet the makers <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a></div>
 }
 
 templ PolicyContent(p viewmodels.CustomerPage) {
@@ -141,7 +141,7 @@ templ AccountDetail(p viewmodels.CustomerPage) {
     <section class="container page-intro compact-intro"><p class="eyebrow">YOUR WEEVCRAFTS JOURNEY</p><h1>{ p.Title }</h1><p>Manage the details that make your account yours.</p></section>
     <section class="container account-layout utility-account-layout">@AccountSidebar("account")<div class="account-content utility-account-content">
       if p.Notice != "" {
-        <div class="utility-notice" role="status"><span class="material-symbols-outlined">check_circle</span>{ p.Notice }</div>
+        <div class="utility-notice" role="status"><span class="material-symbols-outlined" aria-hidden="true">check_circle</span>{ p.Notice }</div>
       }
       if p.Route == "/account/profile" {
         @ProfilePanel()
@@ -153,6 +153,8 @@ templ AccountDetail(p viewmodels.CustomerPage) {
         @SecurityPanel()
       } else if p.Route == "/account/privacy" {
         @PrivacyPanel()
+      } else if p.Route == "/payments" {
+        @PaymentPanel()
       } else {
         @ReviewPanel()
       }
@@ -161,25 +163,29 @@ templ AccountDetail(p viewmodels.CustomerPage) {
 }
 
 templ ProfilePanel() {
-  <section class="utility-card account-panel"><div class="utility-panel-heading"><div><p class="eyebrow">YOUR DETAILS</p><h2>Profile information</h2></div><span class="material-symbols-outlined">person</span></div><form class="utility-form two-column" action="/account/profile?notice=Profile+changes+saved+in+preview" method="get"><label>Full name<input name="name" value="Ananya Sharma"/></label><label>Email address<input name="email" type="email" value="ananya.sharma@gmail.com"/></label><label>Phone number<input name="phone" value="+91 98765 43210"/></label><label>Member since<input value="12 Mar 2023" disabled/></label><button class="primary-button" type="submit">Save changes</button></form></section>
+  <section class="utility-card account-panel"><div class="utility-panel-heading"><div><p class="eyebrow">YOUR DETAILS</p><h2>Profile information</h2></div><span class="material-symbols-outlined" aria-hidden="true">person</span></div><form class="utility-form two-column" action="/account/profile?notice=Profile+changes+saved+in+preview" method="get"><label>Full name<input name="name" value="Ananya Sharma"/></label><label>Email address<input name="email" type="email" value="ananya.sharma@gmail.com"/></label><label>Phone number<input name="phone" value="+91 98765 43210"/></label><label>Member since<input value="12 Mar 2023" disabled/></label><button class="primary-button" type="submit">Save changes</button></form></section>
 }
 
 templ AddressPanel() {
-  <section class="utility-card account-panel"><div class="utility-panel-heading"><div><p class="eyebrow">DELIVERY DETAILS</p><h2>Saved addresses</h2></div><span class="material-symbols-outlined">location_on</span></div><div class="address-list"><article><div><b>Home <mark>Default</mark></b><p>A-203, Green View Apartments<br/>Koramangala, Bengaluru<br/>Karnataka 560034<br/>+91 98765 43210</p></div><a href="/account/addresses?notice=Home+address+editor+opened">Edit</a></article><article><div><b>Studio</b><p>WeeVCrafts Studio<br/>Indiranagar, Bengaluru<br/>Karnataka 560038</p></div><a href="/account/addresses?notice=Studio+address+selected">Use this address</a></article></div><a class="outline-button" href="/account/addresses?notice=New+address+form+opened"><span class="material-symbols-outlined">add</span>Add new address</a></section>
+  <section class="utility-card account-panel"><div class="utility-panel-heading"><div><p class="eyebrow">DELIVERY DETAILS</p><h2>Saved addresses</h2></div><span class="material-symbols-outlined" aria-hidden="true">location_on</span></div><div class="address-list"><article><div><b>Home <mark>Default</mark></b><p>A-203, Green View Apartments<br/>Koramangala, Bengaluru<br/>Karnataka 560034<br/>+91 98765 43210</p></div><a href="/account/addresses?notice=Home+address+editor+opened">Edit</a></article><article><div><b>Studio</b><p>WeeVCrafts Studio<br/>Indiranagar, Bengaluru<br/>Karnataka 560038</p></div><a href="/account/addresses?notice=Studio+address+selected">Use this address</a></article></div><a class="outline-button" href="/account/addresses?notice=New+address+form+opened"><span class="material-symbols-outlined" aria-hidden="true">add</span>Add new address</a></section>
 }
 
 templ NotificationPanel() {
-  <section class="utility-card account-panel"><div class="utility-panel-heading"><div><p class="eyebrow">STAY IN THE LOOP</p><h2>Notification preferences</h2></div><span class="material-symbols-outlined">notifications</span></div><form class="preference-list" action="/account/notifications?notice=Notification+preferences+saved+in+preview" method="get"><label><span><b>Order updates</b><small>Dispatch, delivery and return changes</small></span><input type="checkbox" checked/></label><label><span><b>Maker messages</b><small>Replies from stores you follow</small></span><input type="checkbox" checked/></label><label><span><b>Offers and promotions</b><small>Thoughtful deals and new collections</small></span><input type="checkbox" checked/></label><label><span><b>Maker stories</b><small>New work from the studios you love</small></span><input type="checkbox"/></label><button class="primary-button" type="submit">Save preferences</button></form></section>
+  <section class="utility-card account-panel"><div class="utility-panel-heading"><div><p class="eyebrow">STAY IN THE LOOP</p><h2>Notification preferences</h2></div><span class="material-symbols-outlined" aria-hidden="true">notifications</span></div><form class="preference-list" action="/account/notifications?notice=Notification+preferences+saved+in+preview" method="get"><label><span><b>Order updates</b><small>Dispatch, delivery and return changes</small></span><input type="checkbox" checked/></label><label><span><b>Maker messages</b><small>Replies from stores you follow</small></span><input type="checkbox" checked/></label><label><span><b>Offers and promotions</b><small>Thoughtful deals and new collections</small></span><input type="checkbox" checked/></label><label><span><b>Maker stories</b><small>New work from the studios you love</small></span><input type="checkbox"/></label><button class="primary-button" type="submit">Save preferences</button></form></section>
 }
 
 templ SecurityPanel() {
-  <section class="utility-card account-panel"><div class="utility-panel-heading"><div><p class="eyebrow">KEEP IT SAFE</p><h2>Security and sessions</h2></div><span class="material-symbols-outlined">shield</span></div><div class="security-list"><div><span><b>Password</b><small>Last changed 42 days ago</small></span><a href="/account/security?notice=Password+editor+opened">Change</a></div><div><span><b>Two-step verification</b><small>Recommended for account protection</small></span><a href="/account/security?notice=Two-step+verification+setup+opened">Set up</a></div><div><span><b>Active sessions</b><small>Chrome on Windows · Bengaluru · Active now</small></span><a href="/account/security?notice=All+other+sessions+signed+out">Sign out others</a></div></div><div class="utility-callout"><span class="material-symbols-outlined">info</span><p>WeeVCrafts never asks for your password, OTP or full payment details by message.</p></div></section>
+  <section class="utility-card account-panel"><div class="utility-panel-heading"><div><p class="eyebrow">KEEP IT SAFE</p><h2>Security and sessions</h2></div><span class="material-symbols-outlined" aria-hidden="true">shield</span></div><div class="security-list"><div><span><b>Password</b><small>Last changed 42 days ago</small></span><a href="/account/security?notice=Password+editor+opened">Change</a></div><div><span><b>Two-step verification</b><small>Recommended for account protection</small></span><a href="/account/security?notice=Two-step+verification+setup+opened">Set up</a></div><div><span><b>Active sessions</b><small>Chrome on Windows · Bengaluru · Active now</small></span><a href="/account/security?notice=All+other+sessions+signed+out">Sign out others</a></div></div><div class="utility-callout"><span class="material-symbols-outlined" aria-hidden="true">info</span><p>WeeVCrafts never asks for your password, OTP or full payment details by message.</p></div></section>
 }
 
 templ PrivacyPanel() {
-  <section class="utility-card account-panel"><div class="utility-panel-heading"><div><p class="eyebrow">YOUR CHOICES</p><h2>Privacy preferences</h2></div><span class="material-symbols-outlined">lock</span></div><div class="consent-history"><div><span><b>Service communications</b><small>Required for orders, returns and account security</small></span><mark class="success-mark">Always on</mark></div><div><span><b>Marketing communications</b><small>Offers, new arrivals and maker stories</small></span><a href="/account/privacy?notice=Marketing+consent+withdrawn">Withdraw</a></div><div><span><b>Data access request</b><small>Requested 12 Mar 2024 · Completed</small></span><a href="/account/privacy?notice=Data+download+preview+prepared">Download summary</a></div></div><div class="privacy-actions"><a class="outline-button" href="/account/privacy?notice=Correction+request+preview+submitted">Request a correction</a><a class="outline-button" href="/account/privacy?notice=Deletion+request+preview+submitted">Request account deletion</a></div></section>
+  <section class="utility-card account-panel"><div class="utility-panel-heading"><div><p class="eyebrow">YOUR CHOICES</p><h2>Privacy preferences</h2></div><span class="material-symbols-outlined" aria-hidden="true">lock</span></div><div class="consent-history"><div><span><b>Service communications</b><small>Required for orders, returns and account security</small></span><mark class="success-mark">Always on</mark></div><div><span><b>Marketing communications</b><small>Offers, new arrivals and maker stories</small></span><a href="/account/privacy?notice=Marketing+consent+withdrawn">Withdraw</a></div><div><span><b>Data access request</b><small>Requested 12 Mar 2024 · Completed</small></span><a href="/account/privacy?notice=Data+download+preview+prepared">Download summary</a></div></div><div class="privacy-actions"><a class="outline-button" href="/account/privacy?notice=Correction+request+preview+submitted">Request a correction</a><a class="outline-button" href="/account/privacy?notice=Deletion+request+preview+submitted">Request account deletion</a></div></section>
+}
+
+templ PaymentPanel() {
+  <section class="utility-card account-panel"><div class="utility-panel-heading"><div><p class="eyebrow">SAFE AND SIMPLE</p><h2>Payment methods</h2></div><span class="material-symbols-outlined" aria-hidden="true">payments</span></div><div class="payment-method-list"><article><span class="material-symbols-outlined" aria-hidden="true">credit_card</span><div><b>Visa ending in 4586 <mark>Default</mark></b><small>Expires 08/2027 · Verified for secure checkout</small></div><a href="/payments?notice=Default+payment+method+updated">Use by default</a></article><article><span class="material-symbols-outlined" aria-hidden="true">account_balance</span><div><b>UPI · ananya@upi</b><small>Ready for one-tap payments</small></div><a href="/payments?notice=UPI+payment+method+selected">Select</a></article></div><div class="utility-callout"><span class="material-symbols-outlined" aria-hidden="true">lock</span><p>Payment details are encrypted and never shared with sellers. Add or remove a method before checkout.</p></div><a class="outline-button" href="/payments?notice=Payment+method+form+opened"><span class="material-symbols-outlined" aria-hidden="true">add</span>Add payment method</a></section>
 }
 
 templ ReviewPanel() {
-  <section class="utility-card account-panel"><div class="utility-panel-heading"><div><p class="eyebrow">SHARE THE LOVE</p><h2>Reviews to write</h2></div><span class="material-symbols-outlined">reviews</span></div><div class="review-list"><article><img src="/assets/images/customer/saree-maroon.png" alt="Chanderi saree"/><div><b>Chanderi Silk Cotton Saree</b><small>Delivered 21 Apr 2024 · Weaver's Touch</small><form action="/account/reviews?notice=Review+saved+in+preview" method="get"><label class="stars-input">★★★★★<input class="sr-only" name="rating" value="5"/></label><textarea name="review" rows="3" placeholder="What did you love about it?"></textarea><button class="primary-button" type="submit">Publish review</button></form></div></article><article><img src="/assets/images/customer/ceramic-mugs.png" alt="Ceramic mugs"/><div><b>Handpainted Ceramic Mugs</b><small>Delivered 14 Apr 2024 · Clay &amp; Co.</small><a class="outline-button" href="/account/reviews?notice=Review+editor+opened">Write a review</a></div></article></div></section>
+  <section class="utility-card account-panel"><div class="utility-panel-heading"><div><p class="eyebrow">SHARE THE LOVE</p><h2>Reviews to write</h2></div><span class="material-symbols-outlined" aria-hidden="true">reviews</span></div><div class="review-list"><article><img src="/assets/images/customer/saree-maroon.webp" alt="Chanderi saree" loading="lazy" width="320" height="320"/><div><b>Chanderi Silk Cotton Saree</b><small>Delivered 21 Apr 2024 · Weaver's Touch</small><form action="/account/reviews?notice=Review+saved+in+preview" method="get"><label class="stars-input">★★★★★<input class="sr-only" name="rating" value="5"/></label><textarea name="review" rows="3" placeholder="What did you love about it?"></textarea><button class="primary-button" type="submit">Publish review</button></form></div></article><article><img src="/assets/images/customer/ceramic-mugs.webp" alt="Ceramic mugs" loading="lazy" width="320" height="320"/><div><b>Handpainted Ceramic Mugs</b><small>Delivered 14 Apr 2024 · Clay &amp; Co.</small><a class="outline-button" href="/account/reviews?notice=Review+editor+opened">Write a review</a></div></article></div></section>
 }

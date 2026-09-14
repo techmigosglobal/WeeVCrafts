@@ -22,6 +22,7 @@ import (
 	applicationprivacy "github.com/wecratfs/commerce/internal/application/privacy"
 	domain "github.com/wecratfs/commerce/internal/domain/catalog"
 	domaincommerce "github.com/wecratfs/commerce/internal/domain/commerce"
+	domainidentity "github.com/wecratfs/commerce/internal/domain/identity"
 	domainprivacy "github.com/wecratfs/commerce/internal/domain/privacy"
 	"github.com/wecratfs/commerce/internal/identity"
 	"github.com/wecratfs/commerce/internal/ports"
@@ -31,65 +32,109 @@ import (
 var assets embed.FS
 
 type Handler struct {
-	catalog          *applicationcatalog.Service
-	auth             *applicationauth.Service
-	sessions         *applicationauth.SessionService
-	commerceCatalog  *applicationcommerce.CatalogService
-	cartService      *applicationcommerce.CartService
-	orderService     *applicationcommerce.OrderService
-	paymentService   *applicationpayment.OrderService
-	refundService    *applicationpayment.RefundService
-	recoveryService  *applicationauth.RecoveryService
-	paymentPublicKey string
-	searchService    *applicationcatalog.SearchService
-	privacyService   *applicationprivacy.Service
-	mediaService     *applicationcommerce.MediaService
-	secureCookies    bool
-	templates        *template.Template
-	static           http.Handler
+	catalog             *applicationcatalog.Service
+	auth                *applicationauth.Service
+	roleAdminService    *applicationauth.RoleAdminService
+	sessions            *applicationauth.SessionService
+	commerceCatalog     *applicationcommerce.CatalogService
+	sellerStaff         *applicationcommerce.SellerStaffService
+	inventoryService    *applicationcommerce.InventoryService
+	sellerOrderService  *applicationcommerce.SellerOrderService
+	sellerReportService *applicationcommerce.SellerReportService
+	sellerAdminService  *applicationcommerce.SellerAdminService
+	auditService        *applicationcommerce.AuditService
+	adminOperations     *applicationcommerce.AdminOperationsService
+	brandDirectory      *applicationcommerce.BrandDirectoryService
+	customerDirectory   *applicationauth.CustomerDirectoryService
+	financeService      *applicationcommerce.FinanceService
+	supportService      *applicationcommerce.SupportService
+	returnService       *applicationcommerce.ReturnService
+	cartService         *applicationcommerce.CartService
+	orderService        *applicationcommerce.OrderService
+	paymentService      *applicationpayment.OrderService
+	refundService       *applicationpayment.RefundService
+	recoveryService     *applicationauth.RecoveryService
+	paymentPublicKey    string
+	searchService       *applicationcatalog.SearchService
+	privacyService      *applicationprivacy.Service
+	mediaService        *applicationcommerce.MediaService
+	secureCookies       bool
+	templates           *template.Template
+	static              http.Handler
 }
 
 type pageData struct {
-	Brand             string
-	Tagline           string
-	Description       string
-	Title             string
-	Category          string
-	SearchQuery       string
-	SearchCategory    string
-	SearchSort        string
-	SearchPage        int
-	SearchHasNext     bool
-	SearchHasPrevious bool
-	SearchNextURL     string
-	SearchPreviousURL string
-	SearchFacets      []ports.SearchFacet
-	Products          []domain.Product
-	Product           domain.Product
-	HasProduct        bool
-	Error             string
-	Authenticated     bool
-	AccountUserID     int64
-	CSRFToken         string
-	Sessions          []ports.SessionRecord
-	FormEmail         string
-	FormName          string
-	Cart              domaincommerce.Cart
-	HasCart           bool
-	ManagedProducts   []domaincommerce.ManagedProduct
-	PendingProducts   []domaincommerce.ManagedProduct
-	Orders            []domaincommerce.Order
-	OrderDetail       domaincommerce.OrderDetail
-	HasOrderDetail    bool
-	PaymentIntent     domaincommerce.PaymentIntent
-	HasPayment        bool
-	PaymentPublicKey  string
-	RefundKey         string
-	ActionToken       string
-	RecoveryEnabled   bool
-	Wishlist          []domaincommerce.WishlistItem
-	Notice            string
-	PrivacyCenter     domainprivacy.Center
+	Brand              string
+	Tagline            string
+	Description        string
+	Title              string
+	Category           string
+	SearchQuery        string
+	SearchCategory     string
+	SearchSort         string
+	SearchPage         int
+	SearchHasNext      bool
+	SearchHasPrevious  bool
+	SearchNextURL      string
+	SearchPreviousURL  string
+	SearchFacets       []ports.SearchFacet
+	Products           []domain.Product
+	Brands             []BrandSummary
+	BrandName          string
+	BrandSlug          string
+	Product            domain.Product
+	HasProduct         bool
+	Error              string
+	Authenticated      bool
+	AccountUserID      int64
+	CSRFToken          string
+	Sessions           []ports.SessionRecord
+	FormEmail          string
+	FormName           string
+	Cart               domaincommerce.Cart
+	HasCart            bool
+	ManagedProducts    []domaincommerce.ManagedProduct
+	ManagedProduct     domaincommerce.ManagedProduct
+	HasManagedProduct  bool
+	StaffMembers       []domaincommerce.SellerStaffMember
+	Inventory          []domaincommerce.InventoryItem
+	SellerOrders       []domaincommerce.SellerOrder
+	SellerReport       domaincommerce.SellerReport
+	SellerApplications []domaincommerce.SellerAdminEntry
+	AuditEntries       []domaincommerce.AuditEntry
+	RoleAssignments    []domainidentity.RoleAssignment
+	AdminOrders        []domaincommerce.AdminOrder
+	AdminBrands        []domaincommerce.AdminBrand
+	AdminCustomers     []domainidentity.AdminCustomer
+	FinanceEntries     []domaincommerce.FinanceEntry
+	FinanceView        string
+	SupportTickets     []domaincommerce.SupportTicket
+	SupportAgent       bool
+	SupportSeller      bool
+	Returns            []domaincommerce.ReturnRequest
+	ReturnRequest      domaincommerce.ReturnRequest
+	HasReturnRequest   bool
+	ReturnEnabled      bool
+	SellerProfile      domaincommerce.Seller
+	HasSellerProfile   bool
+	PendingProducts    []domaincommerce.ManagedProduct
+	Orders             []domaincommerce.Order
+	OrderDetail        domaincommerce.OrderDetail
+	HasOrderDetail     bool
+	PaymentIntent      domaincommerce.PaymentIntent
+	HasPayment         bool
+	PaymentPublicKey   string
+	RefundKey          string
+	ActionToken        string
+	RecoveryEnabled    bool
+	Wishlist           []domaincommerce.WishlistItem
+	Notice             string
+	PrivacyCenter      domainprivacy.Center
+}
+
+type productCardData struct {
+	Product   domain.Product
+	CSRFToken string
 }
 
 func NewHandler(catalogService *applicationcatalog.Service) (*Handler, error) {
@@ -156,6 +201,17 @@ func newHandler(catalogService *applicationcatalog.Service, authService *applica
 			return value.Local().Format("2 Jan 2006, 15:04")
 		},
 		"urlquery": url.QueryEscape,
+		"productCard": func(product domain.Product, csrfToken string) productCardData {
+			return productCardData{Product: product, CSRFToken: csrfToken}
+		},
+		"hasPermission": func(permissions []string, wanted string) bool {
+			for _, permission := range permissions {
+				if permission == wanted {
+					return true
+				}
+			}
+			return false
+		},
 	}).ParseFS(assets, "templates/*.html", "templates/partials/*.html")
 	if err != nil {
 		return nil, err
@@ -222,6 +278,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.cartUpdate(w, r)
 	case r.URL.Path == "/cart/remove":
 		h.cartRemove(w, r)
+	case r.URL.Path == "/cart/move-to-wishlist":
+		h.cartMoveToWishlist(w, r)
 	case r.URL.Path == "/wishlist":
 		h.wishlistPage(w, r)
 	case r.URL.Path == "/wishlist/add":
@@ -232,10 +290,16 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.checkout(w, r)
 	case r.URL.Path == "/orders":
 		h.ordersPage(w, r)
+	case strings.HasPrefix(r.URL.Path, "/orders/") && strings.HasSuffix(r.URL.Path, "/payment-status"):
+		h.orderPaymentStatus(w, r, strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/orders/"), "/payment-status"))
+	case strings.HasPrefix(r.URL.Path, "/orders/") && strings.HasSuffix(r.URL.Path, "/tracking"):
+		h.orderTracking(w, r, strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/orders/"), "/tracking"))
 	case strings.HasPrefix(r.URL.Path, "/orders/") && strings.HasSuffix(r.URL.Path, "/payment"):
 		h.orderPayment(w, r, strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/orders/"), "/payment"))
 	case strings.HasPrefix(r.URL.Path, "/orders/") && strings.HasSuffix(r.URL.Path, "/refund"):
 		h.orderRefund(w, r, strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/orders/"), "/refund"))
+	case strings.HasPrefix(r.URL.Path, "/orders/") && strings.HasSuffix(r.URL.Path, "/return"):
+		h.orderReturn(w, r, strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/orders/"), "/return"))
 	case strings.HasPrefix(r.URL.Path, "/orders/") && strings.HasSuffix(r.URL.Path, "/cancel"):
 		h.orderCancel(w, r, strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/orders/"), "/cancel"))
 	case strings.HasPrefix(r.URL.Path, "/orders/"):
@@ -252,16 +316,76 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.sellerProducts(w, r)
 	case r.URL.Path == "/seller/products/submit":
 		h.sellerSubmitProduct(w, r)
+	case r.URL.Path == "/seller/team":
+		h.sellerTeam(w, r)
+	case r.URL.Path == "/seller/team/add":
+		h.sellerTeamAdd(w, r)
+	case r.URL.Path == "/seller/team/remove":
+		h.sellerTeamRemove(w, r)
+	case r.URL.Path == "/seller/inventory":
+		h.sellerInventory(w, r)
+	case r.URL.Path == "/seller/inventory/adjust":
+		h.sellerInventoryAdjust(w, r)
+	case r.URL.Path == "/seller/orders":
+		h.sellerOrders(w, r)
+	case r.URL.Path == "/seller/analytics":
+		h.sellerAnalytics(w, r)
+	case r.URL.Path == "/seller/audit":
+		h.sellerAudit(w, r)
+	case r.URL.Path == "/seller/orders/fulfill":
+		h.sellerOrderFulfill(w, r)
+	case r.URL.Path == "/admin/sellers":
+		h.adminSellers(w, r)
+	case r.URL.Path == "/admin/sellers/status":
+		h.adminSellerStatus(w, r)
+	case r.URL.Path == "/admin/audit" || r.URL.Path == "/admin/audit-logs":
+		h.adminAudit(w, r)
+	case r.URL.Path == "/admin/roles":
+		h.adminRoles(w, r)
+	case r.URL.Path == "/admin/roles/update":
+		h.adminRoleUpdate(w, r)
+	case r.URL.Path == "/admin/orders":
+		h.adminOrders(w, r)
+	case r.URL.Path == "/admin/brands":
+		h.adminBrands(w, r)
+	case r.URL.Path == "/admin/customers":
+		h.adminCustomers(w, r)
+	case r.URL.Path == "/finance" || r.URL.Path == "/admin/payments" || r.URL.Path == "/admin/failed-payments" || r.URL.Path == "/admin/refunds" || r.URL.Path == "/admin/finance-reconciliation":
+		h.financePage(w, r)
+	case r.URL.Path == "/support":
+		h.supportPage(w, r)
+	case r.URL.Path == "/support/create":
+		h.supportCreate(w, r)
+	case r.URL.Path == "/support/status":
+		h.supportStatus(w, r)
+	case r.URL.Path == "/seller/support":
+		h.supportPage(w, r)
+	case r.URL.Path == "/seller/support/create":
+		h.supportCreate(w, r)
+	case strings.HasPrefix(r.URL.Path, "/seller/products/") && strings.HasSuffix(r.URL.Path, "/edit"):
+		h.sellerEditProduct(w, r)
 	case r.URL.Path == "/admin/products":
 		h.adminProducts(w, r)
 	case r.URL.Path == "/admin/products/review":
 		h.adminReviewProduct(w, r)
+	case r.URL.Path == "/admin/returns":
+		h.adminReturns(w, r)
+	case r.URL.Path == "/admin/returns/status":
+		h.adminReturnStatus(w, r)
 	case r.URL.Path == "/":
 		h.home(w, r, "")
 	case r.URL.Path == "/products":
 		h.home(w, r, r.URL.Query().Get("category"))
 	case r.URL.Path == "/search":
 		h.search(w, r)
+	case r.URL.Path == "/search/suggest":
+		h.searchSuggestions(w, r)
+	case r.URL.Path == "/deals":
+		h.deals(w, r)
+	case r.URL.Path == "/brands":
+		h.brands(w, r)
+	case strings.HasPrefix(r.URL.Path, "/brands/"):
+		h.brand(w, r, strings.TrimPrefix(r.URL.Path, "/brands/"))
 	case r.URL.Path == "/shipping":
 		h.policy(w, "Shipping", "Shipping details will be published with the first approved catalogue and fulfilment workflow.")
 	case r.URL.Path == "/returns":
@@ -275,6 +399,85 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	default:
 		h.notFound(w, r)
 	}
+}
+
+// SetSellerStaffService attaches the seller-owner team-management workflow
+// without changing the existing handler constructors used by isolated tests.
+func (h *Handler) SetSellerStaffService(service *applicationcommerce.SellerStaffService) {
+	h.sellerStaff = service
+}
+
+// SetInventoryService attaches the live seller stock workflow without
+// changing the existing constructors used by isolated web tests.
+func (h *Handler) SetInventoryService(service *applicationcommerce.InventoryService) {
+	h.inventoryService = service
+}
+
+// SetSellerOrderService attaches seller-scoped fulfilment without changing
+// the existing handler constructors used by isolated web tests.
+func (h *Handler) SetSellerOrderService(service *applicationcommerce.SellerOrderService) {
+	h.sellerOrderService = service
+}
+
+// SetSellerReportService attaches seller-scoped operational reporting without
+// changing the existing handler constructors used by isolated web tests.
+func (h *Handler) SetSellerReportService(service *applicationcommerce.SellerReportService) {
+	h.sellerReportService = service
+}
+
+// SetSellerAdminService attaches marketplace seller approval and suspension
+// workflows without changing constructors used by isolated web tests.
+func (h *Handler) SetSellerAdminService(service *applicationcommerce.SellerAdminService) {
+	h.sellerAdminService = service
+}
+
+// SetAuditService attaches the role-scoped audit-log read workflow without
+// changing constructors used by isolated web tests.
+func (h *Handler) SetAuditService(service *applicationcommerce.AuditService) {
+	h.auditService = service
+}
+
+// SetRoleAdminService attaches the Super Admin role-assignment workflow
+// without changing constructors used by isolated web tests.
+func (h *Handler) SetRoleAdminService(service *applicationauth.RoleAdminService) {
+	h.roleAdminService = service
+}
+
+// SetAdminOperationsService attaches the masked marketplace order queue
+// without changing constructors used by isolated web tests.
+func (h *Handler) SetAdminOperationsService(service *applicationcommerce.AdminOperationsService) {
+	h.adminOperations = service
+}
+
+// SetBrandDirectoryService attaches the role-scoped admin brand directory
+// without changing the existing handler constructors used by isolated tests.
+func (h *Handler) SetBrandDirectoryService(service *applicationcommerce.BrandDirectoryService) {
+	h.brandDirectory = service
+}
+
+// SetCustomerDirectoryService attaches the masked, role-scoped customer
+// directory without changing the existing handler constructors used by
+// isolated tests.
+func (h *Handler) SetCustomerDirectoryService(service *applicationauth.CustomerDirectoryService) {
+	h.customerDirectory = service
+}
+
+// SetFinanceService attaches the read-only finance workspace without changing
+// the existing handler constructors used by isolated web tests.
+func (h *Handler) SetFinanceService(service *applicationcommerce.FinanceService) {
+	h.financeService = service
+}
+
+// SetSupportService attaches the masked customer/support workflow without
+// changing the existing handler constructors used by isolated web tests.
+func (h *Handler) SetSupportService(service *applicationcommerce.SupportService) {
+	h.supportService = service
+}
+
+// SetReturnService attaches customer return requests and the operations
+// review queue without changing constructors used by isolated web tests.
+func (h *Handler) SetReturnService(service *applicationcommerce.ReturnService) {
+	h.returnService = service
 }
 
 func (h *Handler) home(w http.ResponseWriter, r *http.Request, category string) {

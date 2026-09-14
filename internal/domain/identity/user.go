@@ -25,6 +25,23 @@ type User struct {
 	CreatedAt     time.Time `json:"created_at"`
 }
 
+type RoleAssignment struct {
+	ID          int64
+	Email       string
+	DisplayName string
+	Status      string
+	Roles       []string
+}
+
+type AdminCustomer struct {
+	ID          int64
+	DisplayName string
+	EmailMasked string
+	Status      string
+	OrderCount  int
+	CreatedAt   time.Time
+}
+
 type Credentials struct {
 	User           User
 	PasswordHash   string

@@ -71,6 +71,12 @@
 .utility-panel-heading h2 { margin: 0; font-size: 28px; }
 .utility-panel-heading > .material-symbols-outlined { color: var(--terracotta); font-size: 30px; }
 .address-list, .security-list, .consent-history, .review-list { display: grid; gap: 11px; margin-bottom: 18px; }
+.payment-method-list { display: grid; gap: 11px; margin-bottom: 18px; }
+.payment-method-list article { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 14px; padding: 15px; background: #f7efe5; }
+.payment-method-list article > .material-symbols-outlined { color: var(--terracotta); font-size: 25px; }
+.payment-method-list article b, .payment-method-list article small { display: block; }
+.payment-method-list article small { margin-top: 4px; color: var(--muted); font-size: 11px; }
+.payment-method-list article a { color: var(--terracotta); font-size: 11px; font-weight: 700; }
 .address-list article, .security-list > div, .consent-history > div { display: flex; justify-content: space-between; align-items: flex-start; gap: 15px; padding: 16px; background: #f7efe5; }
 .address-list p, .security-list small, .consent-history small { margin: 6px 0 0; color: var(--muted); font-size: 11px; line-height: 1.6; }
 .address-list a, .security-list a, .consent-history a { flex: 0 0 auto; color: var(--terracotta); font-size: 11px; font-weight: 700; }
@@ -106,4 +112,6 @@
   .policy-heading h1 { font-size: 34px; }
   .review-list article { grid-template-columns: 60px minmax(0, 1fr); }
   .review-list article > img { width: 60px; height: 76px; }
+  .payment-method-list article { grid-template-columns: auto minmax(0, 1fr); }
+  .payment-method-list article a { grid-column: 2; }
 }

@@ -64,6 +64,23 @@ func (s *CartService) Remove(ctx context.Context, userID int64, guestTokenHash s
 	return s.repository.GetCart(ctx, cart.ID)
 }
 
+// MoveToWishlist keeps the cart removal and wishlist insert in one repository
+// transaction. Wishlist ownership is customer-only, so guest carts must use
+// the normal account flow before this action is available.
+func (s *CartService) MoveToWishlist(ctx context.Context, userID int64, variantID, productID int64) (domaincommerce.Cart, error) {
+	if userID <= 0 || variantID <= 0 || productID <= 0 {
+		return domaincommerce.Cart{}, ports.ErrForbidden
+	}
+	cart, err := s.GetOrCreate(ctx, userID, "")
+	if err != nil {
+		return domaincommerce.Cart{}, err
+	}
+	if err := s.repository.MoveCartItemToWishlist(ctx, cart.ID, userID, variantID, productID); err != nil {
+		return domaincommerce.Cart{}, err
+	}
+	return s.repository.GetCart(ctx, cart.ID)
+}
+
 func (s *CartService) MergeGuest(ctx context.Context, userID int64, guestTokenHash string) error {
 	if userID <= 0 || guestTokenHash == "" {
 		return nil

@@ -139,7 +139,7 @@ func (r *PrivacyRepository) ExecuteDeletion(ctx context.Context, userID, request
 		if _, err := tx.Exec(transactionContext, `UPDATE privacy_requests SET status = 'completed', details = details || jsonb_build_object('completed_at', NOW(), 'retained_records', jsonb_build_array('orders', 'payment_attempts', 'consent_history')), updated_at = NOW() WHERE id = $1 AND user_id = $2`, requestID, userID); err != nil {
 			return err
 		}
-		_, err := tx.Exec(transactionContext, `INSERT INTO audit_logs (actor_id, action, resource_type, resource_id, metadata) VALUES ($1, 'privacy.deletion_completed', 'user', $2, $3)`, fmt.Sprint(userID), fmt.Sprint(userID), []byte(`{"retained_records":["orders","payment_attempts","consent_history"]}`))
+		_, err := tx.Exec(transactionContext, `INSERT INTO audit_logs (actor_id, action, resource_type, resource_id, request_id, metadata) VALUES ($1, 'privacy.deletion_completed', 'user', $2, $3, $4)`, fmt.Sprint(userID), fmt.Sprint(userID), ports.RequestID(transactionContext), []byte(`{"retained_records":["orders","payment_attempts","consent_history"]}`))
 		return err
 	})
 }

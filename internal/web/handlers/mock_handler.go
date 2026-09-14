@@ -1,7 +1,11 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
+	"net/url"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -56,8 +60,21 @@ func (h *MockHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.render(w, r, pages.Home(page))
 	case r.URL.Path == "/categories":
 		h.render(w, r, pages.Categories(page))
+	case r.URL.Path == "/brands":
+		h.render(w, r, pages.Brands(page))
+	case strings.HasPrefix(r.URL.Path, "/brands/"):
+		brand, ok := brandBySlug(strings.TrimPrefix(r.URL.Path, "/brands/"))
+		if !ok {
+			h.notFound(w, r)
+			return
+		}
+		page.Title = brand.Name + " brand"
+		page.Description = brand.Description
+		h.render(w, r, pages.BrandDetail(page, brand))
 	case r.URL.Path == "/products" || r.URL.Path == "/search":
 		h.render(w, r, pages.Listing(page))
+	case r.URL.Path == "/deals":
+		h.render(w, r, pages.Deals(page))
 	case strings.HasPrefix(r.URL.Path, "/products/"):
 		if _, ok := productBySlug(strings.TrimPrefix(r.URL.Path, "/products/")); !ok {
 			h.notFound(w, r)
@@ -65,29 +82,50 @@ func (h *MockHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		h.render(w, r, pages.ProductDetail(page))
 	case strings.HasPrefix(r.URL.Path, "/makers/"):
-		if _, ok := sellerBySlug(strings.TrimPrefix(r.URL.Path, "/makers/")); !ok {
+		seller, ok := sellerBySlug(strings.TrimPrefix(r.URL.Path, "/makers/"))
+		if !ok {
 			h.notFound(w, r)
 			return
 		}
-		h.render(w, r, pages.SellerStore(page))
+		page.Title = seller.Name + " maker store"
+		page.Description = seller.Description
+		h.render(w, r, pages.SellerStore(page, seller))
 	case r.URL.Path == "/wishlist":
 		h.render(w, r, pages.Wishlist(page))
 	case r.URL.Path == "/cart":
 		h.render(w, r, pages.Cart(page))
 	case r.URL.Path == "/checkout":
 		h.render(w, r, pages.Checkout(page))
+	case r.URL.Path == "/orders/invoice":
+		h.render(w, r, pages.Empty(viewmodels.CustomerPage{Title: "Invoice preview", Notice: "Your invoice preview is ready. No file was downloaded in this UI-only environment."}))
 	case r.URL.Path == "/orders":
 		h.render(w, r, pages.Orders(page))
+	case r.URL.Path == "/tracking":
+		h.render(w, r, pages.Tracking(page))
 	case strings.HasPrefix(r.URL.Path, "/orders/"):
 		h.render(w, r, pages.OrderDetail(page))
 	case r.URL.Path == "/returns":
-		h.render(w, r, pages.Returns(page))
+		if tab := r.URL.Query().Get("tab"); tab != "" {
+			h.render(w, r, pages.ReturnsFiltered(page, tab))
+		} else {
+			h.render(w, r, pages.Returns(page))
+		}
+	case strings.HasPrefix(r.URL.Path, "/returns/"):
+		h.render(w, r, pages.Empty(viewmodels.CustomerPage{Title: "Return label preview", Notice: "Your return label preview is ready. Download delivery is disabled in this UI-only environment."}))
 	case r.URL.Path == "/account":
 		h.render(w, r, pages.Account(page))
 	case r.URL.Path == "/login" || r.URL.Path == "/register" || r.URL.Path == "/forgot-password" || r.URL.Path == "/reset-password" || r.URL.Path == "/verify-email":
 		h.render(w, r, pages.Auth(page))
 	case r.URL.Path == "/account/profile" || r.URL.Path == "/account/addresses" || r.URL.Path == "/account/notifications" || r.URL.Path == "/account/security" || r.URL.Path == "/account/privacy" || r.URL.Path == "/account/reviews":
 		h.render(w, r, pages.AccountDetail(page))
+	case r.URL.Path == "/payments":
+		h.render(w, r, pages.Payments(page))
+	case r.URL.Path == "/payments/success":
+		h.render(w, r, pages.PaymentStatus(page, "success"))
+	case r.URL.Path == "/payments/failed":
+		h.render(w, r, pages.PaymentStatus(page, "failed"))
+	case r.URL.Path == "/payments/pending":
+		h.render(w, r, pages.PaymentStatus(page, "pending"))
 	case r.URL.Path == "/faq" || r.URL.Path == "/contact" || r.URL.Path == "/shipping" || r.URL.Path == "/size-guide" || r.URL.Path == "/terms" || r.URL.Path == "/privacy" || r.URL.Path == "/about" || r.URL.Path == "/our-story" || r.URL.Path == "/sustainability" || r.URL.Path == "/press" || r.URL.Path == "/careers":
 		h.render(w, r, pages.InfoPage(page))
 	case r.URL.Path == "/seller":
@@ -104,6 +142,10 @@ func (h *MockHandler) admin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	page := adminPage(r.URL.Path, r.URL.Query())
+	if page.Workspace != "" {
+		h.render(w, r, adminpages.Workspace(page))
+		return
+	}
 	switch page.Active {
 	case "dashboard":
 		h.render(w, r, adminpages.Dashboard(page))
@@ -138,6 +180,10 @@ func (h *MockHandler) sellerAdmin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	page := sellerAdminPage(r.URL.Path, r.URL.Query())
+	if page.Workspace != "" {
+		h.render(w, r, selleradminpages.Workspace(page))
+		return
+	}
 	switch page.Active {
 	case "onboarding":
 		h.render(w, r, selleradminpages.Onboarding(page))
@@ -190,6 +236,8 @@ func (h *MockHandler) supportPortal(w http.ResponseWriter, r *http.Request) {
 func (h *MockHandler) fragment(w http.ResponseWriter, r *http.Request) {
 	page := h.page(r, w)
 	switch r.URL.Path {
+	case "/ui/search-suggest":
+		h.render(w, r, pages.SearchSuggestions(page.Products, strings.TrimSpace(page.Query)))
 	case "/ui/listing", "/ui/fragments/listing":
 		h.render(w, r, pages.Listing(page))
 	case "/ui/cart", "/ui/fragments/cart":
@@ -201,7 +249,11 @@ func (h *MockHandler) fragment(w http.ResponseWriter, r *http.Request) {
 	case "/ui/orders", "/ui/fragments/orders":
 		h.render(w, r, pages.Orders(page))
 	case "/ui/returns", "/ui/fragments/returns":
-		h.render(w, r, pages.Returns(page))
+		if tab := r.URL.Query().Get("tab"); tab != "" {
+			h.render(w, r, pages.ReturnsFiltered(page, tab))
+		} else {
+			h.render(w, r, pages.Returns(page))
+		}
 	default:
 		w.WriteHeader(http.StatusNotFound)
 	}
@@ -216,6 +268,18 @@ func (h *MockHandler) mutation(w http.ResponseWriter, r *http.Request) {
 	if len(parts) == 3 && parts[1] == "cart" {
 		h.store.updateCart(w, r, parts[2], parseDelta(r))
 		if r.Header.Get("HX-Request") == "true" {
+			if r.FormValue("intent") == "buy" {
+				w.Header().Set("HX-Redirect", "/checkout")
+				return
+			}
+			if r.Header.Get("HX-Target") == "cart-count" {
+				h.render(w, r, components.CartMutation(h.page(r, w)))
+				return
+			}
+			if r.Header.Get("HX-Target") == "cart-layout" {
+				h.render(w, r, pages.CartUpdate(h.page(r, w)))
+				return
+			}
 			h.render(w, r, pages.Cart(h.page(r, w)))
 			return
 		}
@@ -223,21 +287,40 @@ func (h *MockHandler) mutation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(parts) == 3 && parts[1] == "wishlist" {
-		h.store.toggleWishlist(w, r, parts[2])
+		source := r.FormValue("source")
+		if source == "cart" {
+			h.store.moveCartToWishlist(w, r, parts[2])
+		} else {
+			h.store.toggleWishlist(w, r, parts[2])
+		}
 		product, ok := productBySlug(parts[2])
 		if !ok {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
+		if source == "cart" {
+			if r.Header.Get("HX-Request") == "true" {
+				h.render(w, r, pages.CartUpdate(h.page(r, w)))
+				return
+			}
+		}
 		if r.Header.Get("HX-Request") == "true" {
-			h.render(w, r, components.ProductCard(product, true))
+			page := h.page(r, w)
+			// SavedProduct mutations explicitly target the wishlist grid. Do not
+			// infer that target from the current URL: recommendation cards also
+			// render on /wishlist and target only their own article.
+			if source == "wishlist" {
+				h.render(w, r, pages.WishlistGridMutation(page))
+				return
+			}
+			h.render(w, r, components.WishlistMutation(page, product, false))
 			return
 		}
 		h.redirect(w, r, "/wishlist")
 		return
 	}
 	if r.URL.Path == "/ui/checkout" {
-		h.render(w, r, pages.Empty(viewmodels.CustomerPage{Title: "Preview order placed", Notice: "This is a UI-only order preview. No payment or shipping request was sent."}))
+		h.render(w, r, pages.CheckoutComplete(viewmodels.CustomerPage{Title: "Preview order placed", Notice: "This is a UI-only order preview. No payment or shipping request was sent."}))
 		return
 	}
 	w.WriteHeader(http.StatusNotFound)
@@ -263,39 +346,293 @@ func (h *MockHandler) page(r *http.Request, w http.ResponseWriter) viewmodels.Cu
 	}
 	query := r.URL.Query().Get("q")
 	category := r.URL.Query().Get("category")
+	if r.URL.Path == "/deals" && category == "" {
+		category = "offers"
+	}
+	sortMode := r.URL.Query().Get("sort")
 	products := append([]viewmodels.Product(nil), mockProducts...)
-	if category != "" && category != "offers" {
-		filtered := products[:0]
+	filterCounts := previewFilterCounts(mockProducts)
+	if category == "offers" {
+		filtered := make([]viewmodels.Product, 0, len(products))
+		for _, product := range products {
+			if product.Discount != "" {
+				filtered = append(filtered, product)
+			}
+		}
+		products = filtered
+	} else if category != "" {
+		filtered := make([]viewmodels.Product, 0, len(products))
 		for _, product := range products {
 			if strings.EqualFold(product.Category, category) || strings.Contains(strings.ToLower(product.Category), strings.ReplaceAll(strings.ToLower(category), "-", " ")) {
 				filtered = append(filtered, product)
 			}
 		}
-		if len(filtered) > 0 {
-			products = filtered
-		}
+		products = filtered
 	}
 	if query != "" {
-		filtered := products[:0]
+		filtered := make([]viewmodels.Product, 0, len(products))
+		terms := strings.Fields(strings.ToLower(query))
 		for _, product := range products {
-			if strings.Contains(strings.ToLower(product.Name+" "+product.Category+" "+product.Seller), strings.ToLower(query)) {
+			searchText := strings.ToLower(product.Name + " " + product.Category + " " + product.Seller + " " + product.Badge)
+			matches := true
+			for _, term := range terms {
+				if !strings.Contains(searchText, term) {
+					matches = false
+					break
+				}
+			}
+			if matches {
 				filtered = append(filtered, product)
 			}
 		}
-		if len(filtered) > 0 {
-			products = filtered
+		products = filtered
+	}
+	products = filterProducts(products, r)
+	sort.SliceStable(products, func(i, j int) bool {
+		switch sortMode {
+		case "price-asc":
+			return previewMoney(products[i].Price) < previewMoney(products[j].Price)
+		case "price-desc":
+			return previewMoney(products[i].Price) > previewMoney(products[j].Price)
+		case "newest":
+			return products[i].Slug > products[j].Slug
+		default:
+			return false
 		}
+	})
+	pageNumber := 1
+	pageCount := 1
+	if r.URL.Path == "/products" || r.URL.Path == "/search" || r.URL.Path == "/ui/listing" || r.URL.Path == "/ui/fragments/listing" {
+		const pageSize = 8
+		pageCount = (len(products) + pageSize - 1) / pageSize
+		if pageCount == 0 {
+			pageCount = 1
+		}
+		pageNumber, _ = strconv.Atoi(r.URL.Query().Get("page"))
+		if pageNumber < 1 {
+			pageNumber = 1
+		}
+		if pageNumber > pageCount {
+			pageNumber = pageCount
+		}
+		start := (pageNumber - 1) * pageSize
+		end := start + pageSize
+		if start > len(products) {
+			start = len(products)
+		}
+		if end > len(products) {
+			end = len(products)
+		}
+		products = products[start:end]
 	}
 	wishlistProducts := make([]viewmodels.Product, 0, len(products))
-	for _, product := range products {
+	for _, product := range mockProducts {
 		if snapshot.wishlist[product.Slug] {
 			wishlistProducts = append(wishlistProducts, product)
 		}
 	}
-	if len(wishlistProducts) == 0 {
-		wishlistProducts = products
+	selectedOrder := viewmodels.Order{}
+	if len(snapshot.orders) > 0 {
+		selectedOrder = snapshot.orders[0]
 	}
-	return viewmodels.CustomerPage{Route: r.URL.Path, Title: titleFor(r.URL.Path), Query: query, Notice: r.URL.Query().Get("notice"), Category: category, Brand: "WeeVCrafts", Tagline: "Handmade Today. A Kinder Tomorrow.", Description: "Authentic Indian arts, crafts and sarees, made with care.", Products: products, Categories: mockCategories, Sellers: mockSellers, Cart: snapshot.cart, Orders: snapshot.orders, Returns: mockReturns(), CartCount: cartCount(snapshot.cart), WishlistCount: len(wishlistProducts), Mock: true, Authenticated: true, Now: time.Now()}
+	if strings.HasPrefix(r.URL.Path, "/orders/") {
+		requestedNumber, err := url.PathUnescape(strings.TrimPrefix(r.URL.Path, "/orders/"))
+		if err == nil {
+			requestedNumber = strings.TrimPrefix(strings.TrimSpace(requestedNumber), "#")
+			for _, order := range snapshot.orders {
+				if strings.TrimPrefix(strings.TrimSpace(order.Number), "#") == requestedNumber {
+					selectedOrder = order
+					break
+				}
+			}
+		}
+	}
+	itemsTotal, shippingTotal, discountTotal, total := cartTotals(snapshot.cart)
+	detailProduct := viewmodels.Product{}
+	if strings.HasPrefix(r.URL.Path, "/products/") {
+		detailProduct, _ = productBySlug(strings.TrimPrefix(r.URL.Path, "/products/"))
+	}
+	notice := r.URL.Query().Get("notice")
+	if notice == "" && r.URL.Query().Get("coupon") != "" {
+		notice = "Coupon preview applied: " + r.URL.Query().Get("coupon")
+	}
+	return viewmodels.CustomerPage{Route: r.URL.Path, Title: titleFor(r.URL.Path), Query: query, Sort: sortMode, Notice: notice, Category: category, Filters: r.URL.Query(), Brand: "WeeVCrafts", Tagline: "Handmade Today. A Kinder Tomorrow.", Description: "Authentic Indian arts, crafts and sarees, made with care.", Product: detailProduct, SavedProducts: wishlistProducts, Products: products, FilterCounts: filterCounts, Categories: mockCategories, Sellers: mockSellers, Brands: mockBrands, Cart: snapshot.cart, Orders: snapshot.orders, PaymentActivity: previewPaymentActivity(snapshot.orders), SelectedOrder: selectedOrder, Returns: mockReturns(), CartCount: cartCount(snapshot.cart), WishlistCount: len(wishlistProducts), ItemsTotal: itemsTotal, ShippingTotal: shippingTotal, DiscountTotal: discountTotal, Total: total, Page: pageNumber, Pages: pageCount, Mock: true, Authenticated: true, Now: time.Now()}
+}
+
+func previewPaymentActivity(orders []viewmodels.Order) []viewmodels.PaymentActivity {
+	activities := make([]viewmodels.PaymentActivity, 0, len(orders))
+	for index, order := range orders {
+		status := "Captured"
+		if strings.EqualFold(strings.TrimSpace(order.Status), "Processing") {
+			status = "Pending"
+		} else if strings.EqualFold(strings.TrimSpace(order.Status), "Cancelled") {
+			status = "Failed"
+		}
+		activities = append(activities, viewmodels.PaymentActivity{
+			Reference:   fmt.Sprintf("#PAY-%02d", index+1),
+			Amount:      order.Total,
+			Date:        order.Date,
+			Method:      order.Payment,
+			OrderNumber: order.Number,
+			Status:      status,
+		})
+	}
+	return activities
+}
+
+func previewFilterCounts(products []viewmodels.Product) map[string]int {
+	counts := make(map[string]int, 16)
+	for _, product := range products {
+		if strings.EqualFold(product.Category, "Sarees") {
+			counts["category:sarees"]++
+		}
+		for _, brand := range []string{"handloom", "silk cotton", "chanderi"} {
+			if matchesAny(product.Name+" "+product.Category+" "+product.Badge+" "+product.Seller, []string{brand}) {
+				counts["brand:"+brand]++
+			}
+		}
+		for _, rating := range []string{"4.5+", "4.0+"} {
+			if matchesRating(product.Rating, []string{rating}) {
+				counts["rating:"+rating]++
+			}
+		}
+		for _, priceRange := range []string{"under-1000", "1000-2500", "2500-5000", "over-5000"} {
+			if matchesPrice(previewMoney(product.Price), []string{priceRange}) {
+				counts["price:"+priceRange]++
+			}
+		}
+		if product.InStock {
+			counts["availability:in-stock"]++
+		}
+		for _, location := range []string{"Madhya Pradesh", "Bihar", "Rajasthan"} {
+			if strings.Contains(strings.ToLower(product.Location), strings.ToLower(location)) {
+				counts["location:"+location]++
+			}
+		}
+	}
+	return counts
+}
+
+func filterProducts(products []viewmodels.Product, r *http.Request) []viewmodels.Product {
+	values := r.URL.Query()
+	brands := values["brand"]
+	prices := values["price"]
+	ratings := values["rating"]
+	locations := values["location"]
+	availability := values.Get("availability")
+	filtered := make([]viewmodels.Product, 0, len(products))
+	for _, product := range products {
+		if len(brands) > 0 && !matchesAny(product.Name+" "+product.Category+" "+product.Badge+" "+product.Seller, brands) {
+			continue
+		}
+		price := previewMoney(product.Price)
+		if len(prices) > 0 && !matchesPrice(price, prices) {
+			continue
+		}
+		if len(ratings) > 0 && !matchesRating(product.Rating, ratings) {
+			continue
+		}
+		if len(locations) > 0 && !matchesAny(product.Location, locations) {
+			continue
+		}
+		if availability == "in-stock" && !product.InStock {
+			continue
+		}
+		filtered = append(filtered, product)
+	}
+	if len(brands) == 0 && len(prices) == 0 && len(ratings) == 0 && len(locations) == 0 && availability == "" {
+		return products
+	}
+	return filtered
+}
+
+func matchesAny(value string, candidates []string) bool {
+	lower := strings.ToLower(value)
+	for _, candidate := range candidates {
+		candidate = strings.ToLower(strings.ReplaceAll(candidate, "-", " "))
+		if strings.Contains(lower, candidate) {
+			return true
+		}
+	}
+	return false
+}
+
+func matchesPrice(price int, ranges []string) bool {
+	for _, value := range ranges {
+		switch value {
+		case "under-1000":
+			if price < 1000 {
+				return true
+			}
+		case "1000-2500":
+			if price >= 1000 && price <= 2500 {
+				return true
+			}
+		case "2500-5000":
+			if price > 2500 && price <= 5000 {
+				return true
+			}
+		case "over-5000":
+			if price > 5000 {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func matchesRating(rating string, ranges []string) bool {
+	value, _ := strconv.ParseFloat(rating, 64)
+	for _, candidate := range ranges {
+		threshold, _ := strconv.ParseFloat(strings.TrimSuffix(candidate, "+"), 64)
+		if value >= threshold {
+			return true
+		}
+	}
+	return false
+}
+
+func previewMoney(value string) int {
+	clean := strings.NewReplacer("INR", "", ",", "", " ", "").Replace(value)
+	amount, _ := strconv.Atoi(clean)
+	return amount
+}
+
+func formatPreviewMoney(value int) string {
+	digits := strconv.Itoa(value)
+	if len(digits) <= 3 {
+		return "INR " + digits
+	}
+
+	last := digits[len(digits)-3:]
+	prefix := digits[:len(digits)-3]
+	groups := make([]string, 0, (len(prefix)+1)/2+1)
+	for len(prefix) > 2 {
+		groups = append([]string{prefix[len(prefix)-2:]}, groups...)
+		prefix = prefix[:len(prefix)-2]
+	}
+	groups = append([]string{prefix}, groups...)
+	return fmt.Sprintf("INR %s,%s", strings.Join(groups, ","), last)
+}
+
+func cartTotals(items []viewmodels.CartItem) (itemsTotal, shippingTotal, discountTotal, total string) {
+	itemsValue, compareValue := 0, 0
+	for _, item := range items {
+		itemsValue += previewMoney(item.Product.Price) * item.Quantity
+		compareValue += previewMoney(item.Product.CompareAt) * item.Quantity
+	}
+	if len(items) > 0 {
+		shippingValue := 100
+		shippingTotal = formatPreviewMoney(shippingValue)
+	} else {
+		shippingTotal = formatPreviewMoney(0)
+	}
+	discountValue := compareValue - itemsValue
+	if discountValue < 0 {
+		discountValue = 0
+	}
+	totalValue := itemsValue + previewMoney(shippingTotal)
+	return formatPreviewMoney(itemsValue), shippingTotal, formatPreviewMoney(discountValue), formatPreviewMoney(totalValue)
 }
 
 type sessionSnapshot struct {
@@ -325,6 +662,8 @@ func titleFor(path string) string {
 		return "Indian Arts, Crafts and Sarees"
 	case "/categories":
 		return "Explore Categories"
+	case "/brands":
+		return "Explore Brands"
 	case "/wishlist":
 		return "My Wishlist"
 	case "/cart":
@@ -333,6 +672,10 @@ func titleFor(path string) string {
 		return "Checkout"
 	case "/orders":
 		return "My Orders"
+	case "/tracking":
+		return "Track your order"
+	case "/deals":
+		return "Handmade deals"
 	case "/returns":
 		return "Customer Returns & Refunds"
 	case "/account":
@@ -355,6 +698,14 @@ func titleFor(path string) string {
 		return "Privacy preferences"
 	case "/account/reviews":
 		return "Reviews to write"
+	case "/payments":
+		return "Payment methods"
+	case "/payments/success":
+		return "Payment successful"
+	case "/payments/failed":
+		return "Payment failed"
+	case "/payments/pending":
+		return "Payment pending"
 	case "/faq":
 		return "Frequently asked questions"
 	case "/contact":

@@ -1,12 +1,13 @@
 {{define "product-card"}}
 <article class="group">
-  <a href="/products/{{.Slug}}" class="block" aria-label="View {{.Name}}">
+  <a href="/products/{{.Product.Slug}}" class="block" aria-label="View {{.Product.Name}}">
     <div class="product-card__media">
-      {{if .ImageURL}}<img src="{{.ImageURL}}" alt="{{.Name}}" loading="lazy" class="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]">{{else}}<span class="text-sm text-ink/45">Image coming from the catalogue</span>{{end}}
+      {{if .Product.ImageURL}}<img src="{{.Product.ImageURL}}" alt="{{.Product.Name}}" width="640" height="800" sizes="(min-width: 1280px) 25vw, (min-width: 640px) 50vw, 100vw" loading="lazy" decoding="async" class="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]">{{else}}<span class="text-sm text-ink/45">Image coming from the catalogue</span>{{end}}
     </div>
-    <div class="mt-4 flex items-start justify-between gap-4"><div><p class="text-xs font-semibold uppercase tracking-[0.12em] text-ink/50">{{.Brand}}</p><h3 class="mt-2 text-lg font-semibold leading-tight text-indigo">{{.Name}}</h3></div><span class="text-base font-semibold text-indigo">{{money .PriceCents}}</span></div>
-    <div class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-ink/60"><span>★ {{rating .Rating}} ({{.ReviewCount}})</span><span>{{.DeliveryLabel}}</span></div>
-    {{if .Swatches}}<div class="mt-4 flex gap-2" aria-label="Available colours">{{range .Swatches}}<span class="swatch" style="background-color: {{.}}"></span>{{end}}</div>{{end}}
+    <div class="mt-4 flex items-start justify-between gap-4"><div><p class="text-xs font-semibold uppercase tracking-[0.12em] text-ink/50">{{.Product.Brand}}</p><h3 class="mt-2 text-lg font-semibold leading-tight text-indigo">{{.Product.Name}}</h3></div><span class="text-base font-semibold text-indigo">{{money .Product.PriceCents}}</span></div>
+    <div class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-ink/60"><span aria-label="Rated {{rating .Product.Rating}} out of 5 from {{.Product.ReviewCount}} reviews"><span aria-hidden="true">★</span> {{rating .Product.Rating}} ({{.Product.ReviewCount}})</span><span>{{.Product.DeliveryLabel}}</span></div>
+    {{if .Product.Swatches}}<div class="mt-4 flex gap-2" aria-label="Available colours" role="img">{{range .Product.Swatches}}<span class="swatch" aria-hidden="true" style="background-color: {{.}}"></span>{{end}}</div>{{end}}
   </a>
+  {{if gt .Product.Available 0}}<form class="mt-4" method="post" action="/cart/add" hx-post="/cart/add" hx-target="#live-toast" hx-select="#cart-feedback" hx-swap="innerHTML" hx-indicator="#page-loading" hx-disabled-elt="this"><input type="hidden" name="csrf_token" value="{{.CSRFToken}}"><input type="hidden" name="variant_id" value="{{.Product.VariantID}}"><input type="hidden" name="quantity" value="1"><button class="button-secondary w-full" type="submit">Add to cart</button></form>{{else}}<p class="mt-4 text-sm text-ink/55" role="status">Currently unavailable</p>{{end}}
 </article>
 {{end}}

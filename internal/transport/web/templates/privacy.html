@@ -2,9 +2,9 @@
 <!doctype html>
 <html lang="en">
 <head><title>{{.Title}}</title>{{template "head" .}}</head>
-<body class="bg-paper text-ink">
+<body class="bg-paper text-ink" hx-boost="true" hx-target="#page" hx-select="#page" hx-swap="outerHTML" hx-indicator="#page-loading">
   {{template "header" .}}
-  <main class="mx-auto max-w-3xl px-5 py-16 lg:px-10"><p class="text-sm font-semibold uppercase tracking-[0.18em] text-citrus">A clear promise</p><h1 class="mt-4 font-display text-5xl text-indigo">Privacy at {{.Brand}}</h1><div class="mt-8 grid gap-6 text-sm leading-7 text-ink/70"><p>We collect only what is needed to provide accounts, orders, delivery, support, security, and legal records. Optional marketing and analytics choices are separate from necessary commerce processing.</p><p>Your privacy center shows consent history and gives you a direct way to request access, correction, deletion, or help. Deletion requests are reviewed against records we must retain for legal, payment, fraud, and accounting reasons.</p><p>Private seller and customer documents are access-controlled and audited. We do not store card numbers or CVV in WeCratfs.</p></div><a class="button-primary mt-8 inline-flex" href="/privacy/center">Open privacy center</a></main>
+  <main id="page" class="mx-auto max-w-3xl px-5 py-16 lg:px-10"><p class="text-sm font-semibold uppercase tracking-[0.18em] text-citrus">A clear promise</p><h1 class="mt-4 font-display text-5xl text-indigo">Privacy at {{.Brand}}</h1><div class="mt-8 grid gap-6 text-sm leading-7 text-ink/70"><p>We collect only what is needed to provide accounts, orders, delivery, support, security, and legal records. Optional marketing and analytics choices are separate from necessary commerce processing.</p><p>Your privacy center shows consent history and gives you a direct way to request access, correction, deletion, or help. Deletion requests are reviewed against records we must retain for legal, payment, fraud, and accounting reasons.</p><p>Private seller and customer documents are access-controlled and audited. We do not store card numbers or CVV in WeCratfs.</p></div><a class="button-primary mt-8 inline-flex" href="/privacy/center">Open privacy center</a></main>
   {{template "footer" .}}
 </body>
 </html>

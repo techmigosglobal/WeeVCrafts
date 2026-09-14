@@ -43,19 +43,19 @@ func Team(p viewmodels.SellerAdminPage) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<section class=\"seller-team-layout\"><article class=\"seller-panel seller-team-panel\"><div class=\"seller-panel-heading\"><div><span class=\"material-symbols-outlined\">manage_accounts</span><span><h2>Store team</h2><p>Keep access close to the work each person owns.</p></span></div><a class=\"seller-button primary\" href=\"/seller-admin/team?notice=Invite+form+opened\"><span class=\"material-symbols-outlined\">person_add</span>Invite member</a></div><div class=\"seller-team-table\"><div class=\"seller-team-head\"><span>Member</span><span>Role</span><span>Permissions</span><span>Last active</span><span>Status</span><span>Action</span></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<section class=\"seller-team-layout\"><article class=\"seller-panel seller-team-panel\"><div class=\"seller-panel-heading\"><div><span class=\"material-symbols-outlined\" aria-hidden=\"true\">manage_accounts</span><span><h2>Store team</h2><p>Keep access close to the work each person owns.</p></span></div><a class=\"seller-button primary\" href=\"/seller-admin/team?notice=Invite+form+opened\"><span class=\"material-symbols-outlined\" aria-hidden=\"true\">person_add</span>Invite member</a></div><div class=\"seller-team-table\"><div class=\"seller-team-head\"><span>Member</span><span>Role</span><span>Permissions</span><span>Last active</span><span>Status</span><span>Action</span></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			for _, member := range p.Team {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<div class=\"seller-team-row\"><span class=\"seller-team-person\"><img src=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<div class=\"seller-team-row\"><span class=\"seller-team-person\"><img width=\"1254\" height=\"1254\" src=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var3 string
 				templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue(member.Image)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/selleradmin/team.templ`, Line: 12, Col: 97}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/selleradmin/team.templ`, Line: 12, Col: 124}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
 				if templ_7745c5c3_Err != nil {
@@ -68,7 +68,7 @@ func Team(p viewmodels.SellerAdminPage) templ.Component {
 				var templ_7745c5c3_Var4 string
 				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue(member.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/selleradmin/team.templ`, Line: 12, Col: 117}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/selleradmin/team.templ`, Line: 12, Col: 144}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 				if templ_7745c5c3_Err != nil {
@@ -81,7 +81,7 @@ func Team(p viewmodels.SellerAdminPage) templ.Component {
 				var templ_7745c5c3_Var5 string
 				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(member.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/selleradmin/team.templ`, Line: 12, Col: 143}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/selleradmin/team.templ`, Line: 12, Col: 170}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 				if templ_7745c5c3_Err != nil {
@@ -94,7 +94,7 @@ func Team(p viewmodels.SellerAdminPage) templ.Component {
 				var templ_7745c5c3_Var6 string
 				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(member.Email)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/selleradmin/team.templ`, Line: 12, Col: 170}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/selleradmin/team.templ`, Line: 12, Col: 197}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 				if templ_7745c5c3_Err != nil {
@@ -107,7 +107,7 @@ func Team(p viewmodels.SellerAdminPage) templ.Component {
 				var templ_7745c5c3_Var7 string
 				templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(member.Role)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/selleradmin/team.templ`, Line: 12, Col: 215}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/selleradmin/team.templ`, Line: 12, Col: 242}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 				if templ_7745c5c3_Err != nil {
@@ -120,7 +120,7 @@ func Team(p viewmodels.SellerAdminPage) templ.Component {
 				var templ_7745c5c3_Var8 string
 				templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(member.Permissions)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/selleradmin/team.templ`, Line: 12, Col: 252}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/selleradmin/team.templ`, Line: 12, Col: 279}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 				if templ_7745c5c3_Err != nil {
@@ -133,7 +133,7 @@ func Team(p viewmodels.SellerAdminPage) templ.Component {
 				var templ_7745c5c3_Var9 string
 				templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(member.LastActive)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/selleradmin/team.templ`, Line: 12, Col: 286}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/selleradmin/team.templ`, Line: 12, Col: 313}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 				if templ_7745c5c3_Err != nil {
@@ -168,7 +168,7 @@ func Team(p viewmodels.SellerAdminPage) templ.Component {
 				var templ_7745c5c3_Var12 string
 				templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(member.Status)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/selleradmin/team.templ`, Line: 12, Col: 376}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/selleradmin/team.templ`, Line: 12, Col: 403}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 				if templ_7745c5c3_Err != nil {
@@ -181,7 +181,7 @@ func Team(p viewmodels.SellerAdminPage) templ.Component {
 				var templ_7745c5c3_Var13 templ.SafeURL
 				templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinURLErrs("/seller-admin/team?notice=Permissions+editor+opened+for+" + member.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/selleradmin/team.templ`, Line: 12, Col: 467}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/selleradmin/team.templ`, Line: 12, Col: 494}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 				if templ_7745c5c3_Err != nil {
@@ -192,7 +192,7 @@ func Team(p viewmodels.SellerAdminPage) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "</div></article><aside class=\"seller-team-side\"><article class=\"seller-panel\"><div class=\"seller-panel-heading\"><div><span class=\"material-symbols-outlined\">verified_user</span><span><h2>Permission principles</h2><p>Owner-controlled access for a safer seller workspace.</p></span></div></div><div class=\"team-principles\"><span><i class=\"material-symbols-outlined\">check_circle</i><b>Least privilege</b><small>Give access only to the tools a teammate needs.</small></span><span><i class=\"material-symbols-outlined\">check_circle</i><b>Seller isolation</b><small>Team members can only see Weaver's Touch records.</small></span><span><i class=\"material-symbols-outlined\">check_circle</i><b>Traceable changes</b><small>Permission edits and sensitive actions are recorded.</small></span></div></article><article class=\"seller-panel\"><div class=\"seller-panel-heading\"><div><span class=\"material-symbols-outlined\">rule</span><span><h2>Access presets</h2><p>Start with a clear responsibility.</p></span></div></div><div class=\"team-presets\"><a href=\"/seller-admin/team?notice=Catalog+manager+preset+selected\"><b>Catalog manager</b><small>Products, variants, media and inventory</small><span class=\"material-symbols-outlined\">arrow_forward</span></a><a href=\"/seller-admin/team?notice=Order+assistant+preset+selected\"><b>Order assistant</b><small>Orders, fulfilment and return requests</small><span class=\"material-symbols-outlined\">arrow_forward</span></a><a href=\"/seller-admin/team?notice=Finance+viewer+preset+selected\"><b>Finance viewer</b><small>Read-only commissions and settlements</small><span class=\"material-symbols-outlined\">arrow_forward</span></a></div></article></aside></section>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "</div></article><aside class=\"seller-team-side\"><article class=\"seller-panel\"><div class=\"seller-panel-heading\"><div><span class=\"material-symbols-outlined\" aria-hidden=\"true\">verified_user</span><span><h2>Permission principles</h2><p>Owner-controlled access for a safer seller workspace.</p></span></div></div><div class=\"team-principles\"><span><i class=\"material-symbols-outlined\" aria-hidden=\"true\">check_circle</i><b>Least privilege</b><small>Give access only to the tools a teammate needs.</small></span><span><i class=\"material-symbols-outlined\" aria-hidden=\"true\">check_circle</i><b>Seller isolation</b><small>Team members can only see Weaver's Touch records.</small></span><span><i class=\"material-symbols-outlined\" aria-hidden=\"true\">check_circle</i><b>Traceable changes</b><small>Permission edits and sensitive actions are recorded.</small></span></div></article><article class=\"seller-panel\"><div class=\"seller-panel-heading\"><div><span class=\"material-symbols-outlined\" aria-hidden=\"true\">rule</span><span><h2>Access presets</h2><p>Start with a clear responsibility.</p></span></div></div><div class=\"team-presets\"><a href=\"/seller-admin/team?notice=Catalog+manager+preset+selected\"><b>Catalog manager</b><small>Products, variants, media and inventory</small><span class=\"material-symbols-outlined\" aria-hidden=\"true\">arrow_forward</span></a><a href=\"/seller-admin/team?notice=Order+assistant+preset+selected\"><b>Order assistant</b><small>Orders, fulfilment and return requests</small><span class=\"material-symbols-outlined\" aria-hidden=\"true\">arrow_forward</span></a><a href=\"/seller-admin/team?notice=Finance+viewer+preset+selected\"><b>Finance viewer</b><small>Read-only commissions and settlements</small><span class=\"material-symbols-outlined\" aria-hidden=\"true\">arrow_forward</span></a></div></article></aside></section>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

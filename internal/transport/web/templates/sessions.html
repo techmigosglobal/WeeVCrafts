@@ -2,9 +2,9 @@
 <!doctype html>
 <html lang="en">
 <head><title>{{.Title}}</title>{{template "head" .}}</head>
-<body class="bg-paper text-ink">
+<body class="bg-paper text-ink" hx-boost="true" hx-target="#page" hx-select="#page" hx-swap="outerHTML" hx-indicator="#page-loading">
   {{template "header" .}}
-  <main class="mx-auto max-w-4xl px-5 py-16 lg:px-10">
+  <main id="page" class="mx-auto max-w-4xl px-5 py-16 lg:px-10">
     <div class="flex flex-wrap items-end justify-between gap-6">
       <div><p class="text-sm font-semibold uppercase tracking-[0.18em] text-citrus">Account security</p><h1 class="mt-3 font-display text-5xl text-indigo">Your active sessions</h1><p class="mt-3 text-sm leading-6 text-ink/65">User {{.AccountUserID}} · Session records are stored outside the browser.</p></div>
       <form method="post" action="/account/sessions"><input type="hidden" name="csrf_token" value="{{.CSRFToken}}"><button class="button-secondary" type="submit">Sign out all sessions</button></form>

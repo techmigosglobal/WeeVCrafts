@@ -5,7 +5,7 @@ materials, useful rituals, and products that stay close to nature. The local
 V1 prototype now covers PostgreSQL-backed identity, seller/catalog moderation,
 inventory reservations, carts, wishlist, pending-payment checkout, server-side
 payment-order preparation, indexed-search hydration/rebuild, privacy deletion controls, JSON APIs,
-and provider adapters.
+and provider adapters, plus live customer discovery and tracking screens.
 
 ## Run locally
 
@@ -35,14 +35,36 @@ go run ./cmd/rebuild-search
 ```
 
 The database does not contain startup seed data. The storefront never invents
-products or pretends that sample data is real. Create an account, open the
-seller workspace, create a draft, and use an explicitly assigned
-`marketplace_admin` role for local moderation. No credentials are committed.
+products or pretends that sample data is real. Create an account, submit a
+seller application, and use an explicitly assigned `marketplace_admin` or
+`super_admin` role to approve it before creating a draft. No credentials are
+committed. Seller owners can manage active existing accounts from
+`/seller/team`; marketplace and Super Admins can review sellers at
+`/admin/sellers` and inspect privileged changes at `/admin/audit`.
+Staff membership and permission changes are persisted and audited, and product
+read/write permissions are enforced by the live catalog workflow. Inventory,
+order, return, finance, support, seller-approval, audit, and role-management
+workflows are exposed through server-rendered HTMX-compatible routes with role
+checks at the application and repository boundaries. Settlement/commission
+reporting and provider reconciliation remain intentionally unimplemented until
+their business rules and provider contract are finalized.
+
+Customers can browse real-data `/deals` and `/brands` directories, inspect a
+maker's approved products, see payment success/failure/pending states, and
+open `/orders/{orderNumber}/tracking` for seller-published fulfilment updates.
+Marketplace and Super Admins can inspect approved brands and masked customers;
+finance views are also available at `/admin/payments`,
+`/admin/failed-payments`, `/admin/refunds`, and
+`/admin/finance-reconciliation`.
 
 The runtime is a compiled Go binary. HTMX and Alpine are progressive
 enhancements, while CSS is embedded/check-in based; Node.js/npm is not started
-in production. The local Compose dependencies (PostgreSQL, Redis, Meilisearch,
-and MinIO) are disposable infrastructure behind ports.
+in production. When a stylesheet source changes, run `npm ci` followed by
+`make css-build`; the build generates the minified live stylesheet at
+`internal/transport/web/static/app.css` and minified preview styles beside
+their readable sources under `web/assets/css/*.min.css`. The local Compose dependencies
+(PostgreSQL, Redis, Meilisearch, and MinIO) are disposable infrastructure
+behind ports.
 
 Password recovery and email verification are wired through hashed one-time
 tokens. Configure `WECRATFS_SMTP_ADDR`, `WECRATFS_SMTP_USERNAME`,
@@ -73,8 +95,8 @@ docker compose config
 
 The storefront stylesheet is checked in at
 `internal/transport/web/static/app.css` and embedded into the Go binary. No
-Node.js process, npm dependency, or CSS build step is required to run the
-server.
+Node.js process is required to run the server; npm is only a build-time tool
+for regenerating that checked-in artifact.
 
 `docs/phase-status.md` records the current implementation evidence and the
 remaining gates. `docs/architecture.md` describes dependency direction and

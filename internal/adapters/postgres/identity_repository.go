@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -95,8 +96,8 @@ func (r *UserRepository) RecordFailedLogin(ctx context.Context, userID int64) er
 			return ports.ErrCredentialsNotFound
 		}
 		if _, err := tx.Exec(transactionContext, `
-			INSERT INTO audit_logs (actor_id, action, resource_type, resource_id, metadata)
-			VALUES ($1, 'auth.login_failed', 'user', $1, '{"reason":"invalid_credentials"}'::jsonb)`, fmt.Sprint(userID)); err != nil {
+			INSERT INTO audit_logs (actor_id, action, resource_type, resource_id, request_id, metadata)
+			VALUES ($1, 'auth.login_failed', 'user', $1, $2, '{"reason":"invalid_credentials"}'::jsonb)`, fmt.Sprint(userID), ports.RequestID(transactionContext)); err != nil {
 			return fmt.Errorf("audit failed login: %w", err)
 		}
 		return nil
@@ -109,6 +110,52 @@ func (r *UserRepository) ResetFailedLogin(ctx context.Context, userID int64) err
 	}
 	return nil
 }
+
+func (r *UserRepository) ListCustomers(ctx context.Context, actorID int64, limit int) ([]domainidentity.AdminCustomer, error) {
+	var allowed bool
+	if err := r.pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM user_roles WHERE user_id = $1 AND role_slug IN ($2, $3))`, actorID, string(domainidentity.RoleMarketplaceAdmin), string(domainidentity.RoleSuperAdmin)).Scan(&allowed); err != nil {
+		return nil, err
+	}
+	if !allowed {
+		return nil, ports.ErrForbidden
+	}
+	if limit <= 0 || limit > 500 {
+		limit = 200
+	}
+	rows, err := r.pool.Query(ctx, `
+		SELECT u.id, u.display_name, u.email, u.status, u.created_at, COUNT(DISTINCT o.id)
+		FROM users u
+		JOIN user_roles ur ON ur.user_id = u.id AND ur.role_slug = 'customer'
+		LEFT JOIN orders o ON o.user_id = u.id
+		GROUP BY u.id, u.display_name, u.email, u.status, u.created_at
+		ORDER BY u.created_at DESC, u.id DESC
+		LIMIT $1`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	customers := make([]domainidentity.AdminCustomer, 0)
+	for rows.Next() {
+		var customer domainidentity.AdminCustomer
+		var email string
+		if err := rows.Scan(&customer.ID, &customer.DisplayName, &email, &customer.Status, &customer.CreatedAt, &customer.OrderCount); err != nil {
+			return nil, err
+		}
+		customer.EmailMasked = maskCustomerEmail(email)
+		customers = append(customers, customer)
+	}
+	return customers, rows.Err()
+}
+
+func maskCustomerEmail(email string) string {
+	parts := strings.SplitN(strings.TrimSpace(email), "@", 2)
+	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+		return "hidden"
+	}
+	return parts[0][:1] + "***@" + parts[1]
+}
+
+var _ ports.CustomerDirectoryRepository = (*UserRepository)(nil)
 
 func mapUser(user generated.User, roles []string) domainidentity.User {
 	roleValues := make([]domainidentity.Role, 0, len(roles))

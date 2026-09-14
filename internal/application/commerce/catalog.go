@@ -14,8 +14,9 @@ import (
 var ErrInvalidProduct = errors.New("product details are invalid")
 
 type CatalogService struct {
-	repository ports.CatalogManagementRepository
-	roles      ports.RoleChecker
+	repository  ports.CatalogManagementRepository
+	roles       ports.RoleChecker
+	permissions ports.SellerPermissionChecker
 }
 
 func NewCatalogService(repository ports.CatalogManagementRepository) *CatalogService {
@@ -26,7 +27,11 @@ func NewCatalogService(repository ports.CatalogManagementRepository) *CatalogSer
 // constructor remains available for small isolated unit fixtures that do not
 // model identity storage; the composition root always supplies a RoleChecker.
 func NewCatalogServiceWithRoles(repository ports.CatalogManagementRepository, roles ports.RoleChecker) *CatalogService {
-	return &CatalogService{repository: repository, roles: roles}
+	service := &CatalogService{repository: repository, roles: roles}
+	if checker, ok := roles.(ports.SellerPermissionChecker); ok {
+		service.permissions = checker
+	}
+	return service
 }
 
 func (s *CatalogService) EnsureSeller(ctx context.Context, ownerUserID int64, displayName string) (domaincommerce.Seller, error) {
@@ -37,27 +42,23 @@ func (s *CatalogService) EnsureSeller(ctx context.Context, ownerUserID int64, di
 	return s.repository.EnsureSeller(ctx, ownerUserID, displayName)
 }
 
+func (s *CatalogService) SellerProfile(ctx context.Context, userID int64) (domaincommerce.Seller, error) {
+	if userID <= 0 || s.repository == nil {
+		return domaincommerce.Seller{}, ports.ErrForbidden
+	}
+	return s.repository.GetSeller(ctx, userID)
+}
+
 func (s *CatalogService) CreateDraft(ctx context.Context, ownerUserID int64, input domaincommerce.ProductDraftInput) (domaincommerce.ManagedProduct, error) {
-	if !s.allowed(ctx, ownerUserID, domainidentity.RoleSellerOwner) {
+	if !s.sellerAllowed(ctx, ownerUserID, domaincommerce.SellerPermissionProductWrite) {
 		return domaincommerce.ManagedProduct{}, ports.ErrForbidden
 	}
-	input.Slug = strings.TrimSpace(strings.ToLower(input.Slug))
-	input.BrandSlug = strings.TrimSpace(strings.ToLower(input.BrandSlug))
-	input.BrandName = strings.TrimSpace(input.BrandName)
-	input.CategorySlug = strings.TrimSpace(strings.ToLower(input.CategorySlug))
-	input.CategoryName = strings.TrimSpace(input.CategoryName)
-	input.Name = strings.TrimSpace(input.Name)
-	input.Description = strings.TrimSpace(input.Description)
-	input.SKU = strings.TrimSpace(strings.ToUpper(input.SKU))
-	input.DeliveryLabel = strings.TrimSpace(input.DeliveryLabel)
-	if ownerUserID <= 0 || !validSlug(input.Slug) || !validSlug(input.BrandSlug) || !validSlug(input.CategorySlug) || input.BrandName == "" || input.CategoryName == "" || input.Name == "" || input.Description == "" || input.SKU == "" || input.PriceCents <= 0 || input.InitialStock < 0 || input.InitialStock > 100000 {
+	input, err := normalizeDraft(input)
+	if err != nil || ownerUserID <= 0 {
 		return domaincommerce.ManagedProduct{}, ErrInvalidProduct
 	}
-	if input.CompareAtCents != nil && *input.CompareAtCents < input.PriceCents {
-		return domaincommerce.ManagedProduct{}, ErrInvalidProduct
-	}
-	if input.DeliveryLabel == "" {
-		input.DeliveryLabel = "Dispatch details at checkout"
+	if input.InitialStock > 0 && !s.sellerAllowed(ctx, ownerUserID, domaincommerce.SellerPermissionInventoryWrite) {
+		return domaincommerce.ManagedProduct{}, ports.ErrForbidden
 	}
 	product, err := s.repository.CreateDraft(ctx, ownerUserID, input)
 	if err != nil {
@@ -66,8 +67,31 @@ func (s *CatalogService) CreateDraft(ctx context.Context, ownerUserID int64, inp
 	return product, nil
 }
 
+func (s *CatalogService) GetSellerProduct(ctx context.Context, ownerUserID, productID int64) (domaincommerce.ManagedProduct, error) {
+	if productID <= 0 || !s.sellerAllowed(ctx, ownerUserID, domaincommerce.SellerPermissionProductRead) {
+		return domaincommerce.ManagedProduct{}, ports.ErrForbidden
+	}
+	return s.repository.GetSellerProduct(ctx, ownerUserID, productID)
+}
+
+func (s *CatalogService) UpdateDraft(ctx context.Context, ownerUserID, productID int64, input domaincommerce.ProductDraftInput) (domaincommerce.ManagedProduct, error) {
+	if productID <= 0 || !s.sellerAllowed(ctx, ownerUserID, domaincommerce.SellerPermissionProductWrite) {
+		return domaincommerce.ManagedProduct{}, ports.ErrForbidden
+	}
+	var err error
+	input, err = normalizeDraft(input)
+	if err != nil {
+		return domaincommerce.ManagedProduct{}, err
+	}
+	product, err := s.repository.UpdateDraft(ctx, ownerUserID, productID, input)
+	if err != nil {
+		return domaincommerce.ManagedProduct{}, fmt.Errorf("update product draft: %w", err)
+	}
+	return product, nil
+}
+
 func (s *CatalogService) SubmitProduct(ctx context.Context, ownerUserID, productID int64) error {
-	if productID <= 0 || !s.allowed(ctx, ownerUserID, domainidentity.RoleSellerOwner) {
+	if productID <= 0 || !s.sellerAllowed(ctx, ownerUserID, domaincommerce.SellerPermissionProductWrite) {
 		return ports.ErrForbidden
 	}
 	return s.repository.SubmitProduct(ctx, ownerUserID, productID)
@@ -81,7 +105,7 @@ func (s *CatalogService) ApproveProduct(ctx context.Context, actorID, productID 
 }
 
 func (s *CatalogService) SellerProducts(ctx context.Context, ownerUserID int64) ([]domaincommerce.ManagedProduct, error) {
-	if !s.allowed(ctx, ownerUserID, domainidentity.RoleCustomer, domainidentity.RoleSellerOwner) {
+	if !s.allowed(ctx, ownerUserID, domainidentity.RoleCustomer, domainidentity.RoleSellerOwner) && !s.hasSellerPermission(ctx, ownerUserID, domaincommerce.SellerPermissionProductRead) {
 		return nil, ports.ErrForbidden
 	}
 	return s.repository.ListSellerProducts(ctx, ownerUserID)
@@ -105,6 +129,18 @@ func (s *CatalogService) allowed(ctx context.Context, userID int64, roles ...dom
 	return err == nil && allowed
 }
 
+func (s *CatalogService) sellerAllowed(ctx context.Context, userID int64, permission string) bool {
+	return s.allowed(ctx, userID, domainidentity.RoleSellerOwner) || s.hasSellerPermission(ctx, userID, permission)
+}
+
+func (s *CatalogService) hasSellerPermission(ctx context.Context, userID int64, permission string) bool {
+	if userID <= 0 || s.permissions == nil {
+		return false
+	}
+	allowed, err := s.permissions.HasSellerPermission(ctx, userID, permission)
+	return err == nil && allowed
+}
+
 func validSlug(value string) bool {
 	if len(value) < 2 || len(value) > 120 {
 		return false
@@ -115,4 +151,26 @@ func validSlug(value string) bool {
 		}
 	}
 	return true
+}
+
+func normalizeDraft(input domaincommerce.ProductDraftInput) (domaincommerce.ProductDraftInput, error) {
+	input.Slug = strings.TrimSpace(strings.ToLower(input.Slug))
+	input.BrandSlug = strings.TrimSpace(strings.ToLower(input.BrandSlug))
+	input.BrandName = strings.TrimSpace(input.BrandName)
+	input.CategorySlug = strings.TrimSpace(strings.ToLower(input.CategorySlug))
+	input.CategoryName = strings.TrimSpace(input.CategoryName)
+	input.Name = strings.TrimSpace(input.Name)
+	input.Description = strings.TrimSpace(input.Description)
+	input.SKU = strings.TrimSpace(strings.ToUpper(input.SKU))
+	input.DeliveryLabel = strings.TrimSpace(input.DeliveryLabel)
+	if !validSlug(input.Slug) || !validSlug(input.BrandSlug) || !validSlug(input.CategorySlug) || input.BrandName == "" || input.CategoryName == "" || input.Name == "" || input.Description == "" || input.SKU == "" || input.PriceCents <= 0 || input.InitialStock < 0 || input.InitialStock > 100000 {
+		return domaincommerce.ProductDraftInput{}, ErrInvalidProduct
+	}
+	if input.CompareAtCents != nil && *input.CompareAtCents < input.PriceCents {
+		return domaincommerce.ProductDraftInput{}, ErrInvalidProduct
+	}
+	if input.DeliveryLabel == "" {
+		input.DeliveryLabel = "Dispatch details at checkout"
+	}
+	return input, nil
 }

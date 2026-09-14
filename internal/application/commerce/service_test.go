@@ -13,7 +13,8 @@ import (
 type catalogRepository struct{}
 
 type roleChecker struct {
-	roles map[int64]map[domainidentity.Role]bool
+	roles       map[int64]map[domainidentity.Role]bool
+	permissions map[int64]map[string]bool
 }
 
 func (r roleChecker) HasAnyRole(_ context.Context, userID int64, roles ...domainidentity.Role) (bool, error) {
@@ -25,11 +26,24 @@ func (r roleChecker) HasAnyRole(_ context.Context, userID int64, roles ...domain
 	return false, nil
 }
 
+func (r roleChecker) HasSellerPermission(_ context.Context, userID int64, permission string) (bool, error) {
+	return r.permissions[userID][permission], nil
+}
+
 func (catalogRepository) EnsureSeller(context.Context, int64, string) (domaincommerce.Seller, error) {
 	return domaincommerce.Seller{ID: 1}, nil
 }
+func (catalogRepository) GetSeller(context.Context, int64) (domaincommerce.Seller, error) {
+	return domaincommerce.Seller{ID: 1, Status: "active"}, nil
+}
 func (catalogRepository) CreateDraft(context.Context, int64, domaincommerce.ProductDraftInput) (domaincommerce.ManagedProduct, error) {
 	return domaincommerce.ManagedProduct{ID: 1}, nil
+}
+func (catalogRepository) GetSellerProduct(context.Context, int64, int64) (domaincommerce.ManagedProduct, error) {
+	return domaincommerce.ManagedProduct{ID: 1, Status: "draft"}, nil
+}
+func (catalogRepository) UpdateDraft(context.Context, int64, int64, domaincommerce.ProductDraftInput) (domaincommerce.ManagedProduct, error) {
+	return domaincommerce.ManagedProduct{ID: 1, Status: "draft"}, nil
 }
 func (catalogRepository) SubmitProduct(context.Context, int64, int64) error { return nil }
 func (catalogRepository) ApproveProduct(context.Context, int64, int64, bool, string) error {
@@ -43,8 +57,9 @@ func TestCatalogServiceAppliesRolePolicyBeforeRepository(t *testing.T) {
 	checker := roleChecker{roles: map[int64]map[domainidentity.Role]bool{
 		10: {domainidentity.RoleCustomer: true},
 		11: {domainidentity.RoleSellerOwner: true},
+		13: {domainidentity.RoleSellerStaff: true},
 		12: {domainidentity.RoleMarketplaceAdmin: true},
-	}}
+	}, permissions: map[int64]map[string]bool{13: {domaincommerce.SellerPermissionProductWrite: true}}}
 	service := NewCatalogServiceWithRoles(catalogRepository{}, checker)
 
 	if _, err := service.CreateDraft(context.Background(), 10, validDraft()); !errors.Is(err, ports.ErrForbidden) {
@@ -52,6 +67,9 @@ func TestCatalogServiceAppliesRolePolicyBeforeRepository(t *testing.T) {
 	}
 	if _, err := service.CreateDraft(context.Background(), 11, validDraft()); err != nil {
 		t.Fatalf("seller owner was denied draft creation: %v", err)
+	}
+	if _, err := service.CreateDraft(context.Background(), 13, validDraft()); !errors.Is(err, ports.ErrForbidden) {
+		t.Fatalf("product writer seeded stock without inventory permission: %v", err)
 	}
 	if err := service.ApproveProduct(context.Background(), 11, 1, true, ""); !errors.Is(err, ports.ErrForbidden) {
 		t.Fatalf("seller owner approved a product: %v", err)
@@ -82,6 +100,33 @@ func TestCatalogServiceRejectsInvalidSlugsAndPrices(t *testing.T) {
 	_, err = service.CreateDraft(context.Background(), 1, domaincommerce.ProductDraftInput{Name: "Soap", Slug: "soap", BrandSlug: "brand", BrandName: "Brand", CategorySlug: "care", CategoryName: "Care", Description: "details", PriceCents: 100, CompareAtCents: &compareAt, SKU: "SKU", InitialStock: 1})
 	if !errors.Is(err, ErrInvalidProduct) {
 		t.Fatalf("expected invalid compare-at price, got %v", err)
+	}
+}
+
+func TestCatalogServiceProtectsSellerDraftEditing(t *testing.T) {
+	checker := roleChecker{roles: map[int64]map[domainidentity.Role]bool{
+		11: {domainidentity.RoleSellerOwner: true},
+		12: {domainidentity.RoleSellerStaff: true},
+	}, permissions: map[int64]map[string]bool{
+		12: {domaincommerce.SellerPermissionProductRead: true, domaincommerce.SellerPermissionProductWrite: true},
+	}}
+	service := NewCatalogServiceWithRoles(catalogRepository{}, checker)
+
+	if _, err := service.GetSellerProduct(context.Background(), 12, 1); err != nil {
+		t.Fatalf("seller staff with product-read permission was denied: %v", err)
+	}
+	if _, err := service.UpdateDraft(context.Background(), 12, 1, validDraft()); err != nil {
+		t.Fatalf("seller staff with product-write permission was denied: %v", err)
+	}
+	checker.permissions[12][domaincommerce.SellerPermissionProductWrite] = false
+	if _, err := service.UpdateDraft(context.Background(), 12, 1, validDraft()); !errors.Is(err, ports.ErrForbidden) {
+		t.Fatalf("seller staff without product-write permission edited a draft: %v", err)
+	}
+	if _, err := service.UpdateDraft(context.Background(), 11, 1, validDraft()); err != nil {
+		t.Fatalf("seller owner was denied draft edit: %v", err)
+	}
+	if _, err := service.UpdateDraft(context.Background(), 11, 1, domaincommerce.ProductDraftInput{Slug: "invalid slug"}); !errors.Is(err, ErrInvalidProduct) {
+		t.Fatalf("invalid draft edit returned %v", err)
 	}
 }
 

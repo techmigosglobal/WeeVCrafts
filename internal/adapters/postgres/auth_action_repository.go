@@ -84,7 +84,7 @@ func (r *AuthActionRepository) ConsumeEmailVerification(ctx context.Context, tok
 		if _, err := tx.Exec(transactionContext, `UPDATE users SET email_verified_at = NOW(), updated_at = NOW() WHERE id = $1`, userID); err != nil {
 			return err
 		}
-		_, err := tx.Exec(transactionContext, `INSERT INTO audit_logs (actor_id, action, resource_type, resource_id, metadata) VALUES ($1, 'auth.email_verified', 'user', $2, '{}'::jsonb)`, fmt.Sprint(userID), fmt.Sprint(userID))
+		_, err := tx.Exec(transactionContext, `INSERT INTO audit_logs (actor_id, action, resource_type, resource_id, request_id, metadata) VALUES ($1, 'auth.email_verified', 'user', $2, $3, '{}'::jsonb)`, fmt.Sprint(userID), fmt.Sprint(userID), ports.RequestID(transactionContext))
 		return err
 	})
 	return userID, err
@@ -110,7 +110,7 @@ func (r *AuthActionRepository) ResetPassword(ctx context.Context, tokenHash, pas
 		if _, err := tx.Exec(transactionContext, `UPDATE auth_action_tokens SET consumed_at = NOW() WHERE token_hash = $1`, tokenHash); err != nil {
 			return err
 		}
-		_, err := tx.Exec(transactionContext, `INSERT INTO audit_logs (actor_id, action, resource_type, resource_id, metadata) VALUES ($1, 'auth.password_reset', 'user', $2, '{}'::jsonb)`, fmt.Sprint(userID), fmt.Sprint(userID))
+		_, err := tx.Exec(transactionContext, `INSERT INTO audit_logs (actor_id, action, resource_type, resource_id, request_id, metadata) VALUES ($1, 'auth.password_reset', 'user', $2, $3, '{}'::jsonb)`, fmt.Sprint(userID), fmt.Sprint(userID), ports.RequestID(transactionContext))
 		return err
 	})
 	return userID, err

@@ -82,6 +82,19 @@ func (s *mockStore) updateCart(w http.ResponseWriter, r *http.Request, slug stri
 	}
 }
 
+func (s *mockStore) moveCartToWishlist(w http.ResponseWriter, r *http.Request, slug string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	session := s.sessionUnlocked(w, r)
+	for i := range session.Cart {
+		if session.Cart[i].Product.Slug == slug {
+			session.Wishlist[slug] = true
+			session.Cart = append(session.Cart[:i], session.Cart[i+1:]...)
+			return
+		}
+	}
+}
+
 func (s *mockStore) sessionUnlocked(w http.ResponseWriter, r *http.Request) *mockSession {
 	const cookieName = "weevcrafts_ui"
 	cookie, err := r.Cookie(cookieName)
@@ -108,6 +121,12 @@ func cartCount(items []viewmodels.CartItem) int {
 }
 
 func parseDelta(r *http.Request) int {
+	if quantity, err := strconv.Atoi(r.FormValue("quantity")); err == nil && quantity > 0 {
+		if quantity > 99 {
+			return 99
+		}
+		return quantity
+	}
 	value, _ := strconv.Atoi(r.FormValue("delta"))
 	if value == 0 {
 		value = 1

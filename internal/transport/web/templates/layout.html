@@ -2,39 +2,65 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="{{.Description}}">
+<link rel="preload" href="/static/vendor/htmx.min.js?v=2.0.4" as="script">
 <link rel="stylesheet" href="/static/app.css">
 <link rel="stylesheet" href="/static/commerce.css">
-<script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
-<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.9/dist/cdn.min.js"></script>
+<script src="/static/vendor/htmx.min.js?v=2.0.4" defer></script>
+<script>
+  window.addEventListener("DOMContentLoaded", function () {
+    if (!window.htmx) return;
+    htmx.config.responseHandling = [
+      { code: "204", swap: false },
+      { code: "[23]..", swap: true },
+      { code: "[45]..", swap: true, error: true },
+      { code: "...", swap: false }
+    ];
+    document.body.addEventListener("htmx:afterSwap", function (event) {
+      var target = event.detail && event.detail.target;
+      if (!target || target.id !== "search-suggestions") return;
+      var input = document.getElementById("global-search");
+      if (input) input.setAttribute("aria-expanded", target.children.length > 0 ? "true" : "false");
+    });
+  });
+</script>
 {{end}}
 
 {{define "header"}}
+<a class="skip-link" href="#page" hx-boost="false">Skip to content</a>
+<p id="page-loading" class="page-loading" role="status" aria-live="polite">Loading…</p>
 <header class="border-b border-line bg-paper/95 backdrop-blur">
   <div class="mx-auto flex max-w-screen-2xl items-center gap-6 px-5 py-4 lg:px-10">
     <a href="/" class="shrink-0 text-2xl font-black tracking-tight text-indigo" aria-label="{{.Brand}} home">
       We<span class="text-citrus">Cratfs</span>
     </a>
     <nav class="hidden flex-1 items-center gap-6 text-sm font-medium text-ink/80 lg:flex" aria-label="Primary">
-      <a class="nav-link" href="/category/natural-care">Natural care</a>
-      <a class="nav-link" href="/category/slow-living">Slow living</a>
-      <a class="nav-link" href="/category/home-wellbeing">Home wellbeing</a>
+      <a class="nav-link" href="/category/natural-care"{{if eq .Category "natural-care"}} aria-current="page"{{end}}>Natural care</a>
+      <a class="nav-link" href="/category/slow-living"{{if eq .Category "slow-living"}} aria-current="page"{{end}}>Slow living</a>
+      <a class="nav-link" href="/category/home-wellbeing"{{if eq .Category "home-wellbeing"}} aria-current="page"{{end}}>Home wellbeing</a>
+      <a class="nav-link" href="/deals"{{if eq .Category "deals"}} aria-current="page"{{end}}>Deals</a>
+      <a class="nav-link" href="/brands"{{if eq .Category "brands"}} aria-current="page"{{end}}>Makers</a>
     </nav>
     <div class="ml-auto flex items-center gap-4 text-sm text-ink/80">
-      <a href="/search" class="hidden items-center gap-2 sm:flex" aria-label="Search products">
-        <span aria-hidden="true">⌕</span>
-        Search
-      </a>
+      <form class="live-search hidden sm:flex" action="/search" method="get" role="search">
+        <label class="sr-only" for="global-search">Search products</label>
+        <input id="global-search" class="field live-search__input" name="q" type="search" autocomplete="off" placeholder="Search products" aria-autocomplete="list" aria-controls="search-suggestions" aria-expanded="false" hx-get="/search/suggest" hx-trigger="input changed delay:300ms" hx-target="#search-suggestions" hx-swap="innerHTML" hx-sync="this:replace" hx-indicator="#search-indicator">
+        <button class="button-secondary live-search__button" type="submit"><span id="search-indicator" class="live-search__indicator" aria-hidden="true"></span><span>Search</span></button>
+        <div id="search-suggestions" class="live-search__suggestions" role="listbox" aria-label="Search suggestions"></div>
+      </form>
       <span class="hidden text-ink/20 sm:inline" aria-hidden="true">|</span>
       {{if .Authenticated}}<a class="hidden sm:inline font-semibold text-indigo" href="/account/sessions">Account</a><a class="hidden sm:inline" href="/wishlist">Wishlist</a><form class="hidden sm:inline" method="post" action="/logout"><input type="hidden" name="csrf_token" value="{{.CSRFToken}}"><button class="text-ink/70 hover:text-indigo" type="submit">Log out</button></form>{{else}}<a class="hidden sm:inline" href="/login">Account</a>{{end}}
-      <a href="/cart" aria-label="Cart">Cart ({{if .HasCart}}{{.Cart.ItemCount}}{{else}}0{{end}})</a>
+      <a id="cart-count" href="/cart" aria-label="Cart, {{if .HasCart}}{{.Cart.ItemCount}}{{else}}0{{end}} items">Cart ({{if .HasCart}}{{.Cart.ItemCount}}{{else}}0{{end}})</a>
     </div>
   </div>
+  <div id="live-toast" role="status" aria-live="polite">{{.Notice}}</div>
   <details class="border-t border-line lg:hidden">
     <summary class="cursor-pointer px-5 py-3 text-sm font-semibold text-indigo">Explore the collection</summary>
-    <nav class="grid gap-3 px-5 pb-5 text-sm text-ink/80" aria-label="Mobile primary">
-      <a class="nav-link" href="/category/natural-care">Natural care</a>
-      <a class="nav-link" href="/category/slow-living">Slow living</a>
-      <a class="nav-link" href="/category/home-wellbeing">Home wellbeing</a>
+      <nav class="grid gap-3 px-5 pb-5 text-sm text-ink/80" aria-label="Mobile primary">
+        <a class="nav-link" href="/category/natural-care"{{if eq .Category "natural-care"}} aria-current="page"{{end}}>Natural care</a>
+        <a class="nav-link" href="/category/slow-living"{{if eq .Category "slow-living"}} aria-current="page"{{end}}>Slow living</a>
+        <a class="nav-link" href="/category/home-wellbeing"{{if eq .Category "home-wellbeing"}} aria-current="page"{{end}}>Home wellbeing</a>
+        <a class="nav-link" href="/deals"{{if eq .Category "deals"}} aria-current="page"{{end}}>Deals</a>
+        <a class="nav-link" href="/brands"{{if eq .Category "brands"}} aria-current="page"{{end}}>Makers</a>
     </nav>
   </details>
 </header>
@@ -49,7 +75,7 @@
     </div>
     <div>
       <p class="font-semibold text-indigo">Customer care</p>
-      <div class="mt-3 grid gap-2"><a href="/shipping" class="hover:text-indigo">Shipping</a><a href="/returns" class="hover:text-indigo">Returns</a><a href="/contact" class="hover:text-indigo">Contact</a><a href="/privacy" class="hover:text-indigo">Privacy</a></div>
+      <div class="mt-3 grid gap-2"><a href="/shipping" class="hover:text-indigo">Shipping</a><a href="/returns" class="hover:text-indigo">Returns</a><a href="/support" class="hover:text-indigo">Support</a><a href="/contact" class="hover:text-indigo">Contact</a><a href="/privacy" class="hover:text-indigo">Privacy</a><a href="/deals" class="hover:text-indigo">Deals</a><a href="/brands" class="hover:text-indigo">Makers</a></div>
     </div>
     <div>
       <p class="font-semibold text-indigo">Our promise</p>

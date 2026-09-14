@@ -11,20 +11,20 @@ templ SupportDashboardCaseRows(items []viewmodels.SupportPortalCase) {
 templ SupportConversationRows(items []viewmodels.SupportPortalConversation) {
   <div class="conversation-list">
     for _, item := range items {
-      <a class={ supportConversationClass(item.Tone) } href="/support-portal/cases?notice=Conversation+opened"><span class="conversation-avatar"><img src={ item.Image } alt=""/></span><span><b>{ item.Author }</b><small>{ item.Message }</small></span><time>{ item.Time }</time><i></i></a>
+      <a class={ supportConversationClass(item.Tone) } href="/support-portal/cases?notice=Conversation+opened"><span class="conversation-avatar"><img width="1254" height="1254" src={ item.Image } alt=""/></span><span><b>{ item.Author }</b><small>{ item.Message }</small></span><time>{ item.Time }</time><i></i></a>
     }
   </div>
 }
 
 templ SupportCaseListRows(items []viewmodels.SupportPortalCase) {
   for index, item := range items {
-    <a class={ supportCaseRowClass(index) } href={ "/support-portal/cases?case=" + item.ID }><input type="checkbox" aria-label={ "Select " + item.ID }/><span><strong>{ item.ID }</strong><b>{ item.Subject }</b><small>{ item.Customer } &nbsp;|&nbsp; Customer<br/>Order { item.Order }</small><em>{ item.Category }</em><mark class={ "support-priority " + supportPriorityClass(item.Priority) }>{ item.Priority }</mark></span><span><small>{ item.Created }</small><b class={ "age-" + supportStatusClass(item.Status) }>{ item.Age }</b></span><span class="case-list-avatar">{ supportAvatar(item.CustomerInitials) }</span></a>
+    <div class={ supportCaseRowClass(index) }><input type="checkbox" aria-label={ "Select " + item.ID }/><a href={ "/support-portal/cases?case=" + item.ID }><span><strong>{ item.ID }</strong><b>{ item.Subject }</b><small>{ item.Customer } &nbsp;|&nbsp; Customer<br/>Order { item.Order }</small><em>{ item.Category }</em><mark class={ "support-priority " + supportPriorityClass(item.Priority) }>{ item.Priority }</mark></span><span><small>{ item.Created }</small><b class={ "age-" + supportStatusClass(item.Status) }>{ item.Age }</b></span><span class="case-list-avatar">{ supportAvatar(item.CustomerInitials) }</span></a></div>
   }
 }
 
 templ SupportDirectoryRows(items []viewmodels.SupportPortalDirectoryEntry) {
   for index, item := range items {
-    <a class={ supportDirectoryRowClass(index) } href={ "/support-portal/customers?person=" + item.Name }><span class="directory-person"><img src={ item.Image } alt=""/><span><b>{ item.Name }</b><small>{ item.EmailPhone }</small></span></span><mark class={ supportTypeClass(item.Type) }>{ item.Type }</mark><span>{ item.Location }</span><span>{ item.EmailPhone }</span><span>{ item.Orders }</span><span>{ item.Cases }</span><mark class="support-status success">{ item.Status }</mark><span>{ item.LastActive }</span><span class="material-symbols-outlined">chevron_right</span></a>
+    <a class={ supportDirectoryRowClass(index) } href={ "/support-portal/customers?person=" + item.Name }><span class="directory-person"><img width="1254" height="1254" src={ item.Image } alt=""/><span><b>{ item.Name }</b><small>{ item.EmailPhone }</small></span></span><mark class={ supportTypeClass(item.Type) }>{ item.Type }</mark><span>{ item.Location }</span><span>{ item.EmailPhone }</span><span>{ item.Orders }</span><span>{ item.Cases }</span><mark class="support-status success">{ item.Status }</mark><span>{ item.LastActive }</span><span class="material-symbols-outlined" aria-hidden="true">chevron_right</span></a>
   }
 }
 

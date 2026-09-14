@@ -1,0 +1,11 @@
+{{define "tracking"}}
+<!doctype html>
+<html lang="en">
+<head><title>{{.Title}}</title>{{template "head" .}}</head>
+<body class="bg-paper text-ink" hx-boost="true" hx-target="#page" hx-select="#page" hx-swap="outerHTML" hx-indicator="#page-loading">
+  {{template "header" .}}
+  <main id="page" class="mx-auto max-w-4xl px-5 py-12 lg:px-10 lg:py-16"><a class="text-sm font-semibold text-indigo/70" href="/orders/{{.OrderDetail.OrderNumber}}">← Order {{.OrderDetail.OrderNumber}}</a><p class="mt-8 text-sm font-semibold uppercase tracking-[0.18em] text-citrus">Shipment tracking</p><h1 class="mt-3 font-display text-5xl text-indigo">{{.OrderDetail.OrderNumber}}</h1><p class="mt-4 text-sm leading-6 text-ink/65">Delivery updates are read from seller fulfilment records for this order.</p>{{if .OrderDetail.Fulfillments}}<div class="mt-10 grid gap-5">{{range .OrderDetail.Fulfillments}}<article class="rounded-2xl border border-line bg-white p-6"><div class="flex flex-wrap items-start justify-between gap-4"><div><p class="text-xs font-semibold uppercase tracking-[0.14em] text-ink/50">{{.SellerName}}</p><h2 class="mt-2 font-display text-2xl text-indigo">{{.Status}}</h2></div>{{if .TrackingNumber}}<span class="rounded-full bg-mist px-3 py-1 text-sm font-semibold text-ink/70">{{.Carrier}} · {{.TrackingNumber}}</span>{{end}}</div>{{if .LastNote}}<p class="mt-5 text-sm leading-6 text-ink/70">{{.LastNote}}</p>{{end}}<p class="mt-5 text-xs text-ink/50">Updated {{date .UpdatedAt}}</p></article>{{end}}</div>{{else}}<div class="empty-state mt-10"><h2 class="font-display text-3xl text-indigo">Fulfilment has not started</h2><p class="mt-3 max-w-md text-sm leading-6 text-ink/65">The seller has not published a shipment update yet. Check back here when the order moves into fulfilment.</p></div>{{end}}</main>
+  {{template "footer" .}}
+</body>
+</html>
+{{end}}

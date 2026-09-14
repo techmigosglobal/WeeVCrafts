@@ -1,0 +1,11 @@
+{{define "admin-customers"}}
+<!doctype html>
+<html lang="en">
+<head><title>{{.Title}}</title>{{template "head" .}}</head>
+<body class="bg-paper text-ink" hx-boost="true" hx-target="#page" hx-select="#page" hx-swap="outerHTML" hx-indicator="#page-loading">
+  {{template "header" .}}
+  <main id="page" class="mx-auto max-w-screen-2xl px-5 py-12 lg:px-10 lg:py-16"><div class="flex flex-wrap items-end justify-between gap-4"><div><p class="text-sm font-semibold uppercase tracking-[0.18em] text-citrus">Marketplace administration</p><h1 class="mt-3 font-display text-5xl text-indigo">Customer directory</h1><p class="mt-4 max-w-3xl text-sm leading-6 text-ink/65">Masked customer context for marketplace operations. This view exposes only account status, order count, and a masked email; payment credentials and authentication secrets never enter the template.</p></div><div class="flex flex-wrap gap-3"><a class="button-secondary" href="/admin/orders">Marketplace orders</a><a class="button-secondary" href="/support">Support queue</a></div></div><section class="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{{if .AdminCustomers}}{{range .AdminCustomers}}<article class="rounded-2xl border border-line bg-white p-6"><div class="flex items-start justify-between gap-4"><div><h2 class="font-display text-2xl text-indigo">{{.DisplayName}}</h2><p class="mt-2 text-sm text-ink/65">{{.EmailMasked}}</p></div><span class="rounded-full bg-mist px-3 py-1 text-xs font-semibold text-ink/65">{{.Status}}</span></div><p class="mt-6 border-t border-line pt-4 text-sm text-ink/65">{{.OrderCount}} orders · Joined {{date .CreatedAt}}</p></article>{{end}}{{else}}<div class="empty-state sm:col-span-2 lg:col-span-3"><h2 class="font-display text-3xl text-indigo">No customers yet</h2><p class="mt-3 text-sm text-ink/65">Customer accounts will appear here after real registration.</p></div>{{end}}</section></main>
+  {{template "footer" .}}
+</body>
+</html>
+{{end}}

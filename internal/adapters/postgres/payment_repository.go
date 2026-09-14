@@ -134,7 +134,7 @@ func (r *PaymentRepository) ProcessWebhook(ctx context.Context, webhook ports.Pa
 				"expected_amount_cents": expectedAmount, "received_amount_cents": webhook.AmountCents,
 				"expected_currency": expectedCurrency, "received_currency": webhook.Currency,
 			})
-			if _, err := tx.Exec(transactionContext, `INSERT INTO audit_logs (action, resource_type, resource_id, metadata) VALUES ('payment.webhook_rejected_mismatch', 'order', $1, $2)`, fmt.Sprint(orderID), metadata); err != nil {
+			if _, err := tx.Exec(transactionContext, `INSERT INTO audit_logs (action, resource_type, resource_id, request_id, metadata) VALUES ('payment.webhook_rejected_mismatch', 'order', $1, $2, $3)`, fmt.Sprint(orderID), ports.RequestID(transactionContext), metadata); err != nil {
 				return err
 			}
 			_, err := tx.Exec(transactionContext, `UPDATE payment_webhook_events SET processed_at = NOW() WHERE event_id = $1`, webhook.EventID)
@@ -179,7 +179,7 @@ func (r *PaymentRepository) ProcessWebhook(ctx context.Context, webhook ports.Pa
 			}
 		}
 		metadata, _ := json.Marshal(map[string]string{"event_type": webhook.EventType, "provider_order_id": webhook.ProviderOrderID})
-		if _, err := tx.Exec(transactionContext, `INSERT INTO audit_logs (action, resource_type, resource_id, metadata) VALUES ('payment.webhook_processed', 'order', $1, $2)`, fmt.Sprint(orderID), metadata); err != nil {
+		if _, err := tx.Exec(transactionContext, `INSERT INTO audit_logs (action, resource_type, resource_id, request_id, metadata) VALUES ('payment.webhook_processed', 'order', $1, $2, $3)`, fmt.Sprint(orderID), ports.RequestID(transactionContext), metadata); err != nil {
 			return err
 		}
 		_, err := tx.Exec(transactionContext, `UPDATE payment_webhook_events SET processed_at = NOW() WHERE event_id = $1`, webhook.EventID)

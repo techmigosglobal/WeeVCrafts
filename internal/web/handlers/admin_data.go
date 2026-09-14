@@ -12,11 +12,37 @@ func adminPage(path string, values url.Values) viewmodels.AdminPage {
 	if path == "/admin" || active == "" {
 		active = "dashboard"
 	}
+	requested := active
+	switch active {
+	case "brands":
+		active = "products"
+	case "customers", "reviews":
+		active = "support"
+	case "payments", "failed-payments":
+		active = "finance"
+	case "disputes", "refunds":
+		active = "returns"
+	case "roles", "security-events":
+		active = "security"
+	case "seller-approvals", "seller-details", "seller-suspensions":
+		active = "sellers"
+	case "product-details", "category-management":
+		active = "products"
+	case "coupons":
+		active = "marketing"
+	case "commission-rules", "settlements", "finance-reconciliation":
+		active = "finance"
+	case "audit-logs", "system-health", "search-indexing-health", "worker-queue-health", "settings":
+		active = "analytics"
+	}
 	page := viewmodels.AdminPage{
-		Active: active,
+		Active: active, Workspace: requested,
 		Query:  values.Get("q"),
 		Range:  values.Get("range"),
 		Notice: values.Get("notice"),
+	}
+	if page.Notice == "" && requested != active {
+		page.Notice = strings.ReplaceAll(requested, "-", " ") + " workspace opened"
 	}
 	if page.Range == "" {
 		page.Range = "Last 30 Days"
@@ -220,5 +246,198 @@ func adminPage(path string, values url.Values) viewmodels.AdminPage {
 		}
 		page.Donut = []viewmodels.AdminDonut{{Label: "Sarees", Value: "42%", Color: "red"}, {Label: "Handicrafts", Value: "28%", Color: "green"}, {Label: "Home Decor", Value: "12%", Color: "gold"}, {Label: "Paintings & Arts", Value: "10%", Color: "orange"}, {Label: "Jewellery", Value: "5%", Color: "sand"}, {Label: "Others", Value: "3%", Color: "gray"}}
 	}
+	if requested == active {
+		page.Workspace = ""
+	} else {
+		switch requested {
+		case "brands":
+			page.Title = "Brands & Categories"
+			page.Subtitle = "Organize the marketplace taxonomy, merchandising labels and maker-facing category rules."
+		case "seller-approvals":
+			page.Title = "Seller Approvals"
+			page.Subtitle = "Review verification evidence and approve makers without losing the decision trail."
+		case "seller-details":
+			page.Title = "Seller Details"
+			page.Subtitle = "Inspect seller profile, verification, catalogue and fulfilment context."
+		case "seller-suspensions":
+			page.Title = "Seller Suspensions"
+			page.Subtitle = "Review risk signals and apply a documented seller-access decision."
+		case "product-details":
+			page.Title = "Product Details"
+			page.Subtitle = "Review product content, maker context, compliance claims and moderation history."
+		case "category-management":
+			page.Title = "Category Management"
+			page.Subtitle = "Organize category rules, attributes and merchandising placement."
+		case "customers":
+			page.Title = "Customers"
+			page.Subtitle = "Search customer profiles, order context, support history and communication preferences."
+		case "payments":
+			page.Title = "Payment Operations"
+			page.Subtitle = "Review captured payments, settlements, refunds and reconciliation status."
+		case "failed-payments":
+			page.Title = "Failed Payments"
+			page.Subtitle = "Investigate payment failures and route safe retry or support actions."
+			page.Transactions = []viewmodels.AdminTransaction{
+				{Date: "26 Apr 2024, 02:18 PM", Type: "Payment", Reference: "#PAY25603488", Description: "UPI collect request expired", Amount: "INR 3,299", Status: "Failed"},
+				{Date: "25 Apr 2024, 07:40 PM", Type: "Payment", Reference: "#PAY25602912", Description: "Bank declined the card authorization", Amount: "INR 8,298", Status: "Failed"},
+				{Date: "24 Apr 2024, 11:03 AM", Type: "Refund", Reference: "#REF25601438", Description: "Refund callback pending reconciliation", Amount: "INR 1,499", Status: "Under Review"},
+			}
+		case "disputes":
+			page.Title = "Disputes"
+			page.Subtitle = "Review return evidence and make traceable marketplace decisions."
+		case "refunds":
+			page.Title = "Refund Operations"
+			page.Subtitle = "Review refund requests, provider references and reconciliation status."
+		case "reviews":
+			page.Title = "Review Moderation"
+			page.Subtitle = "Moderate customer reviews while preserving maker and customer context."
+		case "coupons":
+			page.Title = "Coupons"
+			page.Subtitle = "Manage coupon eligibility, limits, dates and marketplace-funded offers."
+		case "commission-rules":
+			page.Title = "Commission Rules"
+			page.Subtitle = "Review category commission rules before they affect seller settlements."
+		case "settlements":
+			page.Title = "Seller Settlements"
+			page.Subtitle = "Review seller payout batches, adjustments and release status."
+		case "finance-reconciliation":
+			page.Title = "Finance Reconciliation"
+			page.Subtitle = "Compare payment, refund, commission and settlement records."
+		case "roles":
+			page.Title = "Role Management"
+			page.Subtitle = "Manage least-privilege roles, permission rules and privileged access review."
+		case "audit-logs":
+			page.Title = "Audit Logs"
+			page.Subtitle = "Trace privileged actions, actor context and request IDs."
+		case "system-health":
+			page.Title = "System Health"
+			page.Subtitle = "Review dependency health, availability signals and operational notices."
+		case "search-indexing-health":
+			page.Title = "Search Indexing Health"
+			page.Subtitle = "Review indexing freshness, rebuild state and fallback behaviour."
+		case "worker-queue-health":
+			page.Title = "Worker Queue Health"
+			page.Subtitle = "Review background work, retries and bounded queue pressure."
+		case "security-events":
+			page.Title = "Security Events"
+			page.Subtitle = "Review sensitive access events and protected-action outcomes."
+		case "settings":
+			page.Title = "Marketplace Settings"
+			page.Subtitle = "Review policy, fulfilment, payment and marketplace configuration."
+		}
+	}
+	page = filterAdminPreview(page, values)
 	return page
+}
+
+func filterAdminPreview(page viewmodels.AdminPage, values url.Values) viewmodels.AdminPage {
+	query := strings.ToLower(strings.TrimSpace(values.Get("q")))
+	if query != "" {
+		page.Sellers = filterAdminSellers(page.Sellers, query)
+		page.Products = filterAdminProducts(page.Products, query)
+		page.Inventory = filterAdminInventory(page.Inventory, query)
+		page.Orders = filterAdminOrders(page.Orders, query)
+		page.Returns = filterAdminReturns(page.Returns, query)
+		page.SupportCases = filterAdminSupportCases(page.SupportCases, query)
+		page.Settlements = filterAdminSettlements(page.Settlements, query)
+		page.Transactions = filterAdminTransactions(page.Transactions, query)
+	}
+
+	category := strings.ToLower(strings.TrimSpace(values.Get("category")))
+	if category != "" {
+		page.Products = filterBy(page.Products, func(item viewmodels.AdminProduct) bool {
+			return strings.Contains(strings.ToLower(item.Category), strings.ReplaceAll(category, "-", " "))
+		})
+	}
+	if status := strings.ToLower(strings.TrimSpace(values.Get("status"))); status != "" {
+		page.Products = filterBy(page.Products, func(item viewmodels.AdminProduct) bool {
+			return strings.Contains(strings.ToLower(item.Status), status)
+		})
+		page.Orders = filterBy(page.Orders, func(item viewmodels.AdminOrder) bool {
+			return strings.Contains(strings.ToLower(item.Fulfillment), status)
+		})
+	}
+	if stock := strings.ToLower(strings.TrimSpace(values.Get("stock"))); stock != "" {
+		page.Inventory = filterBy(page.Inventory, func(item viewmodels.AdminInventory) bool {
+			return stock == "low" && strings.Contains(strings.ToLower(item.Status), "low") || stock == "in-stock" && strings.Contains(strings.ToLower(item.Status), "in stock")
+		})
+	}
+	if warehouse := strings.ToLower(strings.TrimSpace(values.Get("warehouse"))); warehouse != "" {
+		page.Inventory = filterBy(page.Inventory, func(item viewmodels.AdminInventory) bool {
+			return strings.Contains(strings.ToLower(item.Location), warehouse)
+		})
+	}
+	if orderType := strings.ToLower(strings.TrimSpace(values.Get("type"))); orderType != "" {
+		page.Orders = filterBy(page.Orders, func(item viewmodels.AdminOrder) bool {
+			return strings.EqualFold(item.Type, orderType)
+		})
+	}
+	return page
+}
+
+func filterBy[T any](items []T, keep func(T) bool) []T {
+	filtered := make([]T, 0, len(items))
+	for _, item := range items {
+		if keep(item) {
+			filtered = append(filtered, item)
+		}
+	}
+	return filtered
+}
+
+func filterAdminSellers(items []viewmodels.AdminSeller, query string) []viewmodels.AdminSeller {
+	return filterBy(items, func(item viewmodels.AdminSeller) bool {
+		return containsAny(query, item.Name, item.Location, item.Category, item.Status)
+	})
+}
+
+func filterAdminProducts(items []viewmodels.AdminProduct, query string) []viewmodels.AdminProduct {
+	return filterBy(items, func(item viewmodels.AdminProduct) bool {
+		return containsAny(query, item.Name, item.SKU, item.Seller, item.Category, item.Status)
+	})
+}
+
+func filterAdminInventory(items []viewmodels.AdminInventory, query string) []viewmodels.AdminInventory {
+	return filterBy(items, func(item viewmodels.AdminInventory) bool {
+		return containsAny(query, item.Name, item.SKU, item.Location, item.Status)
+	})
+}
+
+func filterAdminOrders(items []viewmodels.AdminOrder, query string) []viewmodels.AdminOrder {
+	return filterBy(items, func(item viewmodels.AdminOrder) bool {
+		return containsAny(query, item.Number, item.Customer, item.Type, item.Destination, item.Fulfillment, item.Delivery)
+	})
+}
+
+func filterAdminReturns(items []viewmodels.AdminReturn, query string) []viewmodels.AdminReturn {
+	return filterBy(items, func(item viewmodels.AdminReturn) bool {
+		return containsAny(query, item.Number, item.Customer, item.Product, item.Reason, item.Status)
+	})
+}
+
+func filterAdminSupportCases(items []viewmodels.AdminSupportCase, query string) []viewmodels.AdminSupportCase {
+	return filterBy(items, func(item viewmodels.AdminSupportCase) bool {
+		return containsAny(query, item.Case, item.Customer, item.Subject, item.Priority, item.Status)
+	})
+}
+
+func filterAdminSettlements(items []viewmodels.AdminSettlement, query string) []viewmodels.AdminSettlement {
+	return filterBy(items, func(item viewmodels.AdminSettlement) bool {
+		return containsAny(query, item.Seller, item.Status, item.Date)
+	})
+}
+
+func filterAdminTransactions(items []viewmodels.AdminTransaction, query string) []viewmodels.AdminTransaction {
+	return filterBy(items, func(item viewmodels.AdminTransaction) bool {
+		return containsAny(query, item.Reference, item.Type, item.Description, item.Status)
+	})
+}
+
+func containsAny(query string, values ...string) bool {
+	for _, value := range values {
+		if strings.Contains(strings.ToLower(value), query) {
+			return true
+		}
+	}
+	return false
 }

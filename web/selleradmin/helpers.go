@@ -3,7 +3,16 @@ package selleradmin
 import (
 	"net/url"
 	"strings"
+
+	"github.com/wecratfs/commerce/internal/web/viewmodels"
 )
+
+func firstSellerReturn(returns []viewmodels.SellerAdminReturn) viewmodels.SellerAdminReturn {
+	if len(returns) == 0 {
+		return viewmodels.SellerAdminReturn{}
+	}
+	return returns[0]
+}
 
 func sellerNavClass(key, current string) string {
 	if key == current {
@@ -12,11 +21,48 @@ func sellerNavClass(key, current string) string {
 	return "seller-nav-link"
 }
 
+func ariaCurrent(active bool) string {
+	if active {
+		return "page"
+	}
+	return ""
+}
+
 func sellerPath(active string) string {
 	if active == "dashboard" || active == "" {
 		return "/seller-admin"
 	}
 	return "/seller-admin/" + active
+}
+
+func sellerWorkspaceTabClass(active bool) string {
+	if active {
+		return "active"
+	}
+	return ""
+}
+
+func sellerTabActive(current, value string) bool {
+	current = strings.ToLower(strings.TrimSpace(current))
+	value = strings.ToLower(strings.TrimSpace(value))
+	if value == "all" {
+		return current == "" || current == "all"
+	}
+	return current == value
+}
+
+func sellerTabClass(current, value string) string {
+	if sellerTabActive(current, value) {
+		return "active"
+	}
+	return ""
+}
+
+func sellerTabAriaCurrent(current, value string) string {
+	if sellerTabActive(current, value) {
+		return "page"
+	}
+	return ""
 }
 
 func sellerStatusClass(value string) string {
@@ -69,9 +115,9 @@ func sellerStatCount(length int) string {
 
 func sellerIntroImage(active string) string {
 	if active == "dashboard" || active == "products" {
-		return "/assets/images/customer/hero-studio.png"
+		return "/assets/images/customer/hero-studio.webp"
 	}
-	return "/assets/images/customer/saree-maroon.png"
+	return "/assets/images/customer/saree-maroon.webp"
 }
 
 func sellerTrendClass(positive bool) string {

@@ -2,15 +2,15 @@
 <!doctype html>
 <html lang="en">
 <head><title>{{.Title}}</title>{{template "head" .}}</head>
-<body class="bg-paper text-ink">
+<body class="bg-paper text-ink" hx-boost="true" hx-target="#page" hx-select="#page" hx-swap="outerHTML" hx-indicator="#page-loading">
   {{template "header" .}}
-  <main class="mx-auto max-w-xl px-5 py-16 lg:px-10">
+  <main id="page" class="mx-auto max-w-xl px-5 py-16 lg:px-10">
     <div class="rounded-[2rem] border border-line bg-white p-6 shadow-sm sm:p-10">
       <p class="text-sm font-semibold uppercase tracking-[0.18em] text-citrus">Welcome back</p>
       <h1 class="mt-3 font-display text-4xl text-indigo">Sign in to {{.Brand}}</h1>
       <p class="mt-3 text-sm leading-6 text-ink/65">Your account keeps orders, saved rituals, and active sessions together.</p>
       {{if .Error}}<div class="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert">{{.Error}}</div>{{end}}
-      <form class="mt-8 grid gap-5" method="post" action="/login" hx-post="/login" hx-target="body">
+      <form class="mt-8 grid gap-5" method="post" action="/login">
         <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
         <label class="grid gap-2 text-sm font-semibold" for="email">Email<input class="field" id="email" name="email" type="email" autocomplete="email" required value="{{.FormEmail}}"></label>
         <label class="grid gap-2 text-sm font-semibold" for="password">Password<input class="field" id="password" name="password" type="password" autocomplete="current-password" required></label>

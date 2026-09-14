@@ -3,13 +3,36 @@ package admin
 import (
 	"net/url"
 	"strings"
+
+	"github.com/wecratfs/commerce/internal/web/viewmodels"
 )
+
+func firstAdminOrder(orders []viewmodels.AdminOrder) viewmodels.AdminOrder {
+	if len(orders) == 0 {
+		return viewmodels.AdminOrder{}
+	}
+	return orders[0]
+}
+
+func firstAdminReturn(returns []viewmodels.AdminReturn) viewmodels.AdminReturn {
+	if len(returns) == 0 {
+		return viewmodels.AdminReturn{}
+	}
+	return returns[0]
+}
 
 func navClass(key, current string) string {
 	if key == current {
 		return "admin-nav-link active"
 	}
 	return "admin-nav-link"
+}
+
+func ariaCurrent(active bool) string {
+	if active {
+		return "page"
+	}
+	return ""
 }
 
 func adminPath(active string) string {
@@ -87,4 +110,53 @@ func auditClass(action string) string {
 
 func actionNotice(prefix, value string) string {
 	return url.QueryEscape(prefix + value)
+}
+
+func workspaceTabClass(active bool) string {
+	if active {
+		return "active"
+	}
+	return ""
+}
+
+func adminParentWorkflow(workspace string) string {
+	switch workspace {
+	case "seller-approvals", "seller-details", "seller-suspensions":
+		return "Sellers"
+	case "product-details", "category-management", "brands":
+		return "Products & Categories"
+	case "coupons":
+		return "Marketing & Content"
+	case "commission-rules", "settlements", "finance-reconciliation", "payments", "failed-payments":
+		return "Finance"
+	case "refunds", "disputes":
+		return "Returns & Refunds"
+	case "audit-logs", "system-health", "search-indexing-health", "worker-queue-health", "settings":
+		return "Analytics & Settings"
+	case "security-events", "roles":
+		return "Security & Roles"
+	default:
+		return "Admin Dashboard"
+	}
+}
+
+func adminParentPath(workspace string) string {
+	switch workspace {
+	case "seller-approvals", "seller-details", "seller-suspensions":
+		return "/admin/sellers"
+	case "product-details", "category-management", "brands":
+		return "/admin/products"
+	case "coupons":
+		return "/admin/marketing"
+	case "commission-rules", "settlements", "finance-reconciliation", "payments", "failed-payments":
+		return "/admin/finance"
+	case "refunds", "disputes":
+		return "/admin/returns"
+	case "audit-logs", "system-health", "search-indexing-health", "worker-queue-health", "settings":
+		return "/admin/analytics"
+	case "security-events", "roles":
+		return "/admin/security"
+	default:
+		return "/admin"
+	}
 }

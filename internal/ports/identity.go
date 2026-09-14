@@ -13,6 +13,7 @@ var (
 	ErrUserAlreadyExists   = errors.New("user already exists")
 	ErrAuthTokenInvalid    = errors.New("authentication token is invalid or expired")
 	ErrEmailUnavailable    = errors.New("email delivery is unavailable")
+	ErrRoleState           = errors.New("role assignment state is invalid")
 )
 
 type UserRepository interface {
@@ -62,4 +63,13 @@ type EmailMessage struct {
 // services rather than being hidden only in templates or HTTP handlers.
 type RoleChecker interface {
 	HasAnyRole(ctx context.Context, userID int64, roles ...domainidentity.Role) (bool, error)
+}
+
+type RoleAdministrationRepository interface {
+	ListRoleAssignments(ctx context.Context, actorID int64) ([]domainidentity.RoleAssignment, error)
+	UpdateRoleAssignment(ctx context.Context, actorID, userID int64, role domainidentity.Role, grant bool, reason string) error
+}
+
+type CustomerDirectoryRepository interface {
+	ListCustomers(ctx context.Context, actorID int64, limit int) ([]domainidentity.AdminCustomer, error)
 }

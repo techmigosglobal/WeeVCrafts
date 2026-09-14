@@ -1,0 +1,36 @@
+{{define "seller-analytics"}}
+<!doctype html>
+<html lang="en">
+<head><title>{{.Title}}</title>{{template "head" .}}</head>
+<body class="bg-paper text-ink" hx-boost="true" hx-target="#page" hx-select="#page" hx-swap="outerHTML" hx-indicator="#page-loading">
+  {{template "header" .}}
+  <main id="page" class="mx-auto max-w-screen-2xl px-5 py-12 lg:px-10 lg:py-16">
+    <div class="flex flex-wrap items-end justify-between gap-5">
+      <div><a class="text-sm font-semibold text-indigo/70" href="/seller">← Seller workspace</a><p class="mt-6 text-sm font-semibold uppercase tracking-[0.18em] text-citrus">Operational reporting</p><h1 class="mt-3 font-display text-5xl text-indigo">Seller analytics</h1><p class="mt-3 max-w-3xl text-sm leading-6 text-ink/65">This summary is calculated from your seller-scoped order records. Gross order value is not a settlement or commission statement.</p></div>
+      <nav class="flex flex-wrap gap-3" aria-label="Seller workspace"><a class="button-secondary" href="/seller/orders">Orders</a><a class="button-secondary" href="/seller/inventory">Inventory</a><a class="button-secondary" href="/seller/team">Team</a></nav>
+    </div>
+    {{if .SellerReport.OrderCount}}
+    <section class="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4" aria-label="Seller performance summary">
+      <article class="rounded-2xl border border-line bg-white p-5"><p class="text-xs font-semibold uppercase tracking-[0.14em] text-ink/50">Gross order value</p>{{if .SellerReport.MixedCurrencies}}<p class="mt-3 text-xl font-semibold text-indigo">Multiple currencies</p>{{else}}<p class="mt-3 text-3xl font-semibold text-indigo">{{money .SellerReport.GrossSalesCents}}</p>{{end}}<p class="mt-2 text-xs text-ink/55">Seller subtotal projection</p></article>
+      <article class="rounded-2xl border border-line bg-white p-5"><p class="text-xs font-semibold uppercase tracking-[0.14em] text-ink/50">Orders</p><p class="mt-3 text-3xl font-semibold text-indigo">{{.SellerReport.OrderCount}}</p><p class="mt-2 text-xs text-ink/55">Visible to this seller</p></article>
+      <article class="rounded-2xl border border-line bg-white p-5"><p class="text-xs font-semibold uppercase tracking-[0.14em] text-ink/50">Units sold</p><p class="mt-3 text-3xl font-semibold text-indigo">{{.SellerReport.UnitsSold}}</p><p class="mt-2 text-xs text-ink/55">Across included order lines</p></article>
+      <article class="rounded-2xl border border-line bg-white p-5"><p class="text-xs font-semibold uppercase tracking-[0.14em] text-ink/50">Currency</p><p class="mt-3 text-xl font-semibold text-indigo">{{.SellerReport.Currency}}</p><p class="mt-2 text-xs text-ink/55">Read from order records</p></article>
+    </section>
+    <section class="mt-8 rounded-2xl border border-line bg-white p-6 sm:p-8" aria-labelledby="fulfilment-heading">
+      <div class="flex flex-wrap items-end justify-between gap-4"><div><p class="text-sm font-semibold uppercase tracking-[0.14em] text-citrus">Order health</p><h2 id="fulfilment-heading" class="mt-2 font-display text-3xl text-indigo">Fulfilment pipeline</h2></div><a class="button-secondary" href="/seller/orders">Open fulfilment queue</a></div>
+      <dl class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div class="rounded-xl bg-mist p-4"><dt class="text-sm text-ink/60">Pending</dt><dd class="mt-2 text-2xl font-semibold text-indigo">{{.SellerReport.PendingOrders}}</dd></div>
+        <div class="rounded-xl bg-mist p-4"><dt class="text-sm text-ink/60">Processing</dt><dd class="mt-2 text-2xl font-semibold text-indigo">{{.SellerReport.ProcessingOrders}}</dd></div>
+        <div class="rounded-xl bg-mist p-4"><dt class="text-sm text-ink/60">Shipped</dt><dd class="mt-2 text-2xl font-semibold text-indigo">{{.SellerReport.ShippedOrders}}</dd></div>
+        <div class="rounded-xl bg-mist p-4"><dt class="text-sm text-ink/60">Delivered</dt><dd class="mt-2 text-2xl font-semibold text-indigo">{{.SellerReport.DeliveredOrders}}</dd></div>
+      </dl>
+    </section>
+    {{else}}
+    <section class="empty-state mt-10" aria-live="polite"><h2 class="font-display text-3xl text-indigo">No seller orders yet</h2><p class="mt-3 max-w-xl text-sm leading-6 text-ink/65">Analytics will appear after a paid customer order contains one of your approved products. No estimated revenue is shown before that happens.</p><a class="button-primary mt-7 inline-flex" href="/seller">Review your catalogue</a></section>
+    {{end}}
+    <aside class="mt-8 rounded-2xl border border-line bg-mist p-5 text-sm leading-6 text-ink/65"><strong class="text-indigo">Finance boundary:</strong> commission rules, payout deductions, settlement status, and provider reconciliation are intentionally excluded until the seller finance ledger is available. This page never presents gross order value as money owed to you.</aside>
+  </main>
+  {{template "footer" .}}
+</body>
+</html>
+{{end}}

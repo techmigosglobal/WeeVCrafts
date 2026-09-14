@@ -1,0 +1,16 @@
+{{define "audit"}}
+<!doctype html>
+<html lang="en">
+<head><title>{{.Title}}</title>{{template "head" .}}</head>
+<body class="bg-paper text-ink" hx-boost="true" hx-target="#page" hx-select="#page" hx-swap="outerHTML" hx-indicator="#page-loading">
+  {{template "header" .}}
+  <main id="page" class="mx-auto max-w-screen-2xl px-5 py-12 lg:px-10 lg:py-16">
+    <div class="flex flex-wrap items-end justify-between gap-4"><div><p class="text-sm font-semibold uppercase tracking-[0.18em] text-citrus">Governance</p><h1 class="mt-3 font-display text-5xl text-indigo">Audit log</h1><p class="mt-4 max-w-3xl text-sm leading-6 text-ink/65">Privileged activity is read from PostgreSQL. Actor, resource, request ID, and decision metadata stay together for incident review.</p></div><a class="button-secondary" href="/admin/sellers">Seller applications</a></div>
+    <section class="mt-10 grid gap-3" aria-label="Privileged audit entries">
+      {{if .AuditEntries}}{{range .AuditEntries}}<article class="rounded-2xl border border-line bg-white p-5"><div class="flex flex-wrap items-start justify-between gap-4"><div><p class="text-xs font-semibold uppercase tracking-[0.14em] text-ink/50">{{date .CreatedAt}} · request {{if .RequestID}}{{.RequestID}}{{else}}not supplied{{end}}</p><h2 class="mt-2 text-lg font-semibold text-indigo">{{.Action}}</h2><p class="mt-2 text-sm text-ink/65">Actor {{.ActorID}} · {{.ResourceType}} / {{.ResourceID}}</p></div><code class="max-w-full break-all rounded bg-mist px-3 py-2 text-xs text-ink/65">{{.Metadata}}</code></div></article>{{end}}{{else}}<div class="empty-state"><h2 class="font-display text-3xl text-indigo">No audit entries yet</h2><p class="mt-3 text-sm text-ink/65">Privileged actions will appear here after the first audited change.</p></div>{{end}}
+    </section>
+  </main>
+  {{template "footer" .}}
+</body>
+</html>
+{{end}}

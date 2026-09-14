@@ -3,4 +3,12 @@
 !.env.example
 /bin/
 /tmp/
+node_modules/
+test-results/
+/admin-qa/profile*/
+/admin-qa/chrome-profile*/
+/customer-qa/profile*/
+/customer-qa-final/profile*/
+/seller-admin-qa-final2/profile*/
+/support-portal-qa-final/profile*/
 web/static/

@@ -1,8 +1,9 @@
 # WeCratfs phase status
 
-**Current status:** Core V1 prototype flows are implemented locally through verified payment-webhook settlement, cancellation, wishlist, search rebuild/facets, reservation expiry, secure account recovery seams, operational search metrics, and a provider-neutral full-refund path; external staging, live Razorpay, production-sized load, legal, and production gates remain open.  
-**Current gate:** G03–G14 — integrated prototype verification  
-**Completion estimate:** approximately 92% of the locally verifiable V1 prototype; approximately 45% of the full production-release gate set.  
+**Current status:** The locally verifiable V1 frontend is complete for the customer, seller, marketplace-admin, super-admin, and support role previews. It runs with mock data, is responsive, and is interactive without a backend; live integrations, staging, legal, and production gates remain separate follow-up work.
+
+**Current gate:** Local frontend V1 — complete; full production-release gates remain open
+**Completion estimate:** 100% of the requested locally verifiable frontend scope; approximately 45% of the broader production-release gate set.
 **Source PRD:** [`../Prd.md`](../Prd.md)  
 **Execution plan:** [`../Phases/README.md`](../Phases/README.md)
 
@@ -21,6 +22,12 @@
 - Added migration `0015_auth_action_tokens.sql` for hashed, one-time email
   verification and password-reset tokens plus the authoritative verification
   timestamp on users.
+- Added migration `0016_seller_staff_permissions.sql`, seller-scoped staff
+  membership management, granular permission storage, owner-only team routes,
+  and catalog permission enforcement for seller staff.
+- Added live seller onboarding state, marketplace seller approval/suspension,
+  role-scoped audit-log reads, and Super Admin operational role management;
+  privileged changes require a reason and receive request-aware audit records.
 - Added domain, application, and provider-neutral port contracts under
   `internal/domain/`, `internal/application/`, and `internal/ports/`.
 - Added JSON API, web template, health transport, responsive compiled stylesheet,
@@ -108,7 +115,7 @@
 - Redis, Meilisearch, S3-compatible storage, sessions, and payment providers
   are provider-neutral ports; their SDK/HTTP implementations stay in adapter
   packages and no provider type crosses domain/application boundaries.
-- Versioned migrations 0001–0015 create the current commerce, privacy,
+- Versioned migrations 0001–0020 create the current commerce, privacy,
   webhook, media, refund, and account-action metadata model. Checkout, payment, media
   lifecycle, and processed-refund transitions use
   PostgreSQL transactions and row locks.
@@ -299,6 +306,92 @@ The following checks passed in the current workspace:
   overflow.
 
 ## Known issues and remaining gates
+
+### Frontend issue-list checkpoint (2026-09-14)
+
+- The isolated HTMX/Alpine UI preview covers the customer P0–P3 issue list:
+  real route links, query-backed filters and sorting, wishlist/cart mutations,
+  checkout/payment states, product interactions, responsive mobile sheets and
+  purchase actions, focus/keyboard affordances, readable controls, loading and
+  empty states, and local image/font assets. Customer, marketplace-admin,
+  seller-admin, and support route matrices are covered by HTTP/template tests
+  across 96 named customer/seller/admin routes. Playwright verification also
+  passes the representative customer/admin/seller/support pages at 320, 768,
+  1024, and 1440px, with the customer interaction paths and fluid mobile
+  checkout/returns controls exercised. A 21-route WCAG A/AA axe scan reports
+  zero violations.
+- The live `cmd/res2` frontend now has customer commerce, real-data deals and
+  maker discovery, payment outcome pages, customer shipment tracking, seller catalog draft
+  editing, owner-managed seller staff membership, catalog product permission
+  enforcement, a seller inventory read/adjust workflow, and customer return
+  requests with an operations returns queue. Inventory reads and adjustments
+  are seller-scoped, permission-checked, transaction-safe, and audited;
+  catalogue editing no longer changes stock. Return requests are customer-owned
+  and status transitions are restricted and audited; payment refunds remain a
+  separate provider-confirmed workflow. These are
+  source/unit-test verified in this checkout. The migrations have not been
+  applied to a running PostgreSQL instance because the Docker daemon is
+  unavailable here.
+- Live seller order fulfilment is now available through a seller-scoped queue
+  with sequential, audited transitions and `ORDER_READ`/`ORDER_FULFILL`
+  separation. Finance has a read-only payment/refund reconciliation view
+  restricted to finance operators, marketplace administrators, and super administrators. Customer support
+  requests and a masked support-agent queue are also live, with audited status
+  notes and customer-owned order references. HTTP request IDs are propagated
+  into the audit records for these privileged flows. The preview role portals are
+  intentionally not being presented as live backend integrations.
+- Live marketplace order inspection now masks customer email and exposes order,
+  payment, and seller fulfilment status to marketplace/operations/Super Admin
+  roles. Audit history is readable by marketplace/Super Admin roles, while
+  operational role assignments are Super Admin-only and reason-required.
+- Seller onboarding now creates a pending seller application; marketplace and
+  Super Admins can approve, suspend, or close it, with seller tools gated by
+  the authoritative seller status. The live audit screen exposes privileged
+  records to marketplace/Super Admin roles, while role assignment is restricted
+  to Super Admin and excludes bootstrap-controlled Super Admin membership.
+- Customer payment success/failure/pending-verification states, a real-data
+  deals page, maker directory/detail pages, and customer-safe shipment tracking
+  are now available through the live HTMX frontend. Tracking reads only the
+  seller fulfilment projection attached to the authenticated customer's order.
+- The live customer header now provides debounced, PostgreSQL-backed HTMX
+  search suggestions with a normal search fallback. Authenticated cart rows
+  can move an item to the customer's wishlist through a CSRF-protected,
+  transactional route that refreshes the cart and badge with focused HTMX/OOB
+  fragments.
+- The preview customer summary is now data-driven for category counts, payment
+  activity, order totals, and filtered tab counts; Returns tabs render their
+  own refund/closed datasets and truthful empty states. Safe helpers keep empty
+  orders, returns, support queues, and role tables renderable when records are
+  absent. A seller workspace five-column table regression at the tablet
+  breakpoint was corrected, and fresh headless Chrome captures at 1440, 768,
+  and 390px were visually inspected after the fix.
+- Product cards, saved products, and maker profiles now render rating-derived
+  star counts with accessible labels; checkout payment tabs are entirely
+  Alpine-controlled so the selected method and visible fields stay in sync.
+  Handler/component regression coverage and a fresh headless Chrome smoke pass
+  cover these local interactions.
+- Preview CSS sources remain readable for maintenance, while `make css-build`
+  now produces and serves minified font, customer, admin, seller, and support
+  stylesheets. The build contract checks every generated preview stylesheet;
+  no Node.js process is required at runtime.
+- Generated Chromium QA profile directories were moved out of the checkout
+  (the visual PNG evidence remains under the role QA directories), reducing
+  the working-tree footprint by roughly 1 GB and leaving no zero-byte files in
+  the project tree.
+- Seller owners now have live, seller-scoped analytics, support requests, and
+  audit activity pages. Analytics aggregates the authenticated seller's order
+  projection without inventing settlement or commission values; support is
+  owner-scoped and the audit view exposes only seller-owned resources. These
+  pages are role-checked, empty-state aware, and covered by application,
+  handler, template, and focused route tests.
+- Marketplace and Super Admins also have role-checked, read-only live views for
+  approved brands, masked customers, payments, failed payments, refunds, and
+  finance reconciliation. Unsupported mutations are deliberately absent from
+  these views.
+- Live settlement/commission calculation, provider reconciliation automation,
+  MFA/break-glass security policy controls, and the remaining admin operational
+  queues remain open; no settlement total or manual override is implied by the
+  finance view.
 
 - G00/G01/G02 are complete in local evidence, with dependency outage and
   restart-volume evidence retained as follow-up checks.

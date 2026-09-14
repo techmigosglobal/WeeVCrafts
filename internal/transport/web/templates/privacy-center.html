@@ -2,9 +2,9 @@
 <!doctype html>
 <html lang="en">
 <head><title>{{.Title}}</title>{{template "head" .}}</head>
-<body class="bg-paper text-ink">
+<body class="bg-paper text-ink" hx-boost="true" hx-target="#page" hx-select="#page" hx-swap="outerHTML" hx-indicator="#page-loading">
   {{template "header" .}}
-  <main class="mx-auto max-w-4xl px-5 py-12 lg:px-10 lg:py-16">
+  <main id="page" class="mx-auto max-w-4xl px-5 py-12 lg:px-10 lg:py-16">
     <p class="text-sm font-semibold uppercase tracking-[0.18em] text-citrus">Your controls</p>
     <h1 class="mt-3 font-display text-5xl text-indigo">Privacy center</h1>
     <p class="mt-3 text-sm leading-6 text-ink/65">Account {{.AccountUserID}} · choices are recorded with a policy version and source.</p>

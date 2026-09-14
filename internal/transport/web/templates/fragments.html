@@ -1,0 +1,11 @@
+{{define "cart-add-response"}}<span id="cart-feedback">{{.Notice}}</span><a id="cart-count" href="/cart" aria-label="Cart, {{.Cart.ItemCount}} items" hx-swap-oob="outerHTML">Cart ({{.Cart.ItemCount}})</a><div id="live-toast" hx-swap-oob="innerHTML" role="status" aria-live="polite"><span>{{.Notice}}</span></div>{{end}}
+
+{{define "cart-mutation"}}{{template "cart-content" .}}<a id="cart-count" href="/cart" aria-label="Cart, {{.Cart.ItemCount}} items" hx-swap-oob="outerHTML">Cart ({{.Cart.ItemCount}})</a><div id="live-toast" hx-swap-oob="innerHTML" role="status" aria-live="polite"><span>{{.Notice}}</span></div>{{end}}
+
+{{define "wishlist-mutation"}}{{template "wishlist-content" .}}<a id="cart-count" href="/cart" aria-label="Cart, {{if .HasCart}}{{.Cart.ItemCount}}{{else}}0{{end}} items" hx-swap-oob="outerHTML">Cart ({{if .HasCart}}{{.Cart.ItemCount}}{{else}}0{{end}})</a><div id="live-toast" hx-swap-oob="innerHTML" role="status" aria-live="polite"><span>{{.Notice}}</span></div>{{end}}
+
+{{define "wishlist-add-response"}}<span>{{.Notice}}</span>{{end}}
+
+{{define "search-suggestions"}}
+{{if .Notice}}<p class="live-search__empty" role="alert">{{.Notice}}</p>{{else if .Products}}<div class="live-search__items">{{range .Products}}<a class="live-search__item" role="option" href="/products/{{.Slug}}"><span><strong>{{.Name}}</strong><small>{{.Brand}} · {{money .PriceCents}}</small></span></a>{{end}}<a class="live-search__all" role="option" href="/search?q={{urlquery .SearchQuery}}">View all results</a></div>{{else if .SearchQuery}}<p class="live-search__empty" role="status">No published products matched “{{.SearchQuery}}”.</p>{{end}}
+{{end}}

@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"net/url"
   "github.com/wecratfs/commerce/internal/web/viewmodels"
   "github.com/wecratfs/commerce/web/components"
 )
@@ -14,19 +15,135 @@ templ Document(p viewmodels.CustomerPage) {
       <meta name="description" content={ p.Description }/>
       <meta name="robots" content="noindex,nofollow"/>
       <title>{ p.Title } - WeeVCrafts</title>
-      <link rel="preconnect" href="https://fonts.googleapis.com"/>
-      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous"/>
-      <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&amp;family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,300,0,0&amp;family=Playfair+Display:ital,wght@0,500;0,600;1,500;1,600&amp;display=swap" rel="stylesheet"/>
-      <link rel="stylesheet" href="/assets/css/app.css"/>
-      <link rel="stylesheet" href="/assets/css/theme.css"/>
-      <link rel="stylesheet" href="/assets/css/utility.css"/>
+      <link rel="preload" href="/assets/fonts/dm-sans-400.ttf" as="font" type="font/ttf" crossorigin/>
+      <link rel="preload" href="/assets/fonts/playfair-display-500.ttf" as="font" type="font/ttf" crossorigin/>
+      <link rel="stylesheet" href="/assets/css/fonts.min.css"/>
+      <link rel="stylesheet" href="/assets/css/theme.min.css"/>
+      <link rel="stylesheet" href="/assets/css/utility.min.css"/>
       <style>[x-cloak]{display:none!important}</style>
       <script defer src="/assets/js/htmx.min.js"></script>
       <script defer src="/assets/js/alpine.min.js"></script>
+      <script>
+        function initDetailInteractions() {
+          document.querySelectorAll('[role="tablist"]').forEach(function (tablist) {
+            if (tablist.dataset.keyboardBound === "true") return;
+            var tabs = Array.prototype.slice.call(tablist.querySelectorAll('[role="tab"]'));
+            tabs.forEach(function (tab, index) {
+              tab.addEventListener("keydown", function (event) {
+                if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
+                event.preventDefault();
+                var next = event.key === "ArrowRight" ? (index + 1) % tabs.length : (index - 1 + tabs.length) % tabs.length;
+                tabs[next].focus();
+                tabs[next].click();
+              });
+            });
+            tablist.dataset.keyboardBound = "true";
+          });
+          document.querySelectorAll(".pincode").forEach(function (form) {
+            if (form.dataset.bound === "true") return;
+            var input = form.querySelector("input");
+            var button = form.querySelector("button");
+            if (!input || !button) return;
+            button.addEventListener("click", function () {
+              var status = form.querySelector(".pincode-status");
+              if (!status) {
+                status = document.createElement("small");
+                status.className = "pincode-status";
+                status.setAttribute("role", "status");
+                form.insertAdjacentElement("afterend", status);
+              }
+              if (!/^[1-9][0-9]{5}$/.test(input.value.trim())) {
+                status.textContent = "Enter a valid 6-digit pincode.";
+                status.classList.add("is-error");
+              } else {
+                status.textContent = "Delivery available to " + input.value.trim() + ".";
+                status.classList.remove("is-error");
+              }
+            });
+            form.dataset.bound = "true";
+          });
+        }
+        function initSearchSuggestions() {
+          var input = document.getElementById("global-search");
+          if (!input) return;
+          var list = function () { return document.getElementById("search-suggestions"); };
+          var options = function () {
+            var popup = list();
+            return popup ? Array.prototype.slice.call(popup.querySelectorAll('[role="option"]')) : [];
+          };
+          var clearActive = function () {
+            options().forEach(function (option) { option.setAttribute("aria-selected", "false"); });
+            input.removeAttribute("aria-activedescendant");
+          };
+          var syncExpanded = function () {
+            var popup = list();
+            if (popup) {
+              if (input.value.trim() === "") {
+                popup.hidden = true;
+              } else if (popup.innerHTML.trim() !== "" && popup.dataset.dismissed !== "true") {
+                popup.hidden = false;
+              }
+            }
+            input.setAttribute("aria-expanded", popup && !popup.hidden ? "true" : "false");
+          };
+          var setActive = function (index) {
+            var available = options();
+            if (!available.length) return;
+            available.forEach(function (option) { option.setAttribute("aria-selected", "false"); });
+            var active = available[(index + available.length) % available.length];
+            active.setAttribute("aria-selected", "true");
+            input.setAttribute("aria-activedescendant", active.id);
+          };
+          if (input.dataset.searchKeyboardBound !== "true") {
+            input.addEventListener("input", function () {
+              var popup = list();
+              if (popup) delete popup.dataset.dismissed;
+              clearActive();
+            });
+            input.addEventListener("keydown", function (event) {
+              var available = options();
+              var activeID = input.getAttribute("aria-activedescendant");
+              var activeIndex = available.findIndex(function (option) { return option.id === activeID; });
+              if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+                if (!available.length) return;
+                event.preventDefault();
+                setActive(event.key === "ArrowDown" ? activeIndex + 1 : activeIndex - 1);
+              } else if (event.key === "Enter" && activeIndex >= 0) {
+                event.preventDefault();
+                window.location.assign(available[activeIndex].getAttribute("href"));
+              } else if (event.key === "Escape") {
+                var popup = list();
+                if (popup && !popup.hidden) {
+                  event.preventDefault();
+                  popup.dataset.dismissed = "true";
+                  popup.hidden = true;
+                  clearActive();
+                  syncExpanded();
+                }
+              }
+            });
+            input.dataset.searchKeyboardBound = "true";
+          }
+          syncExpanded();
+        }
+        document.addEventListener("DOMContentLoaded", initDetailInteractions);
+        document.addEventListener("DOMContentLoaded", initSearchSuggestions);
+        document.addEventListener("htmx:afterSettle", function () {
+          initDetailInteractions();
+          initSearchSuggestions();
+        });
+      </script>
     </head>
-    <body>
+    <body hx-boost="true" hx-indicator="#ui-loading">
+      <div id="ui-loading" class="htmx-indicator" role="status" aria-live="polite">Updating preview…</div>
+      <div id="ui-toast" role="status" aria-live="polite"></div>
       @components.Header(p)
-      <main id="page">{ children... }</main>
+      <main id="page" x-data="{checkoutStep:1,payment:'upi',detailQuantity:1}">
+        if p.Route == "/payments" {
+          <nav class="payment-state-links container" aria-label="Payment status views"><span>Reconciliation views</span><a href="/payments/success">Success</a><a href="/payments/pending">Pending</a><a href="/payments/failed">Failed</a></nav>
+        }
+        { children... }
+      </main>
       @components.Footer(p)
     </body>
   </html>
@@ -36,15 +153,35 @@ templ Breadcrumb(items ...string) {
   <nav class="breadcrumb" aria-label="Breadcrumb">
     for i, item := range items {
       if i > 0 {
-        <span>/</span>
+        <span aria-hidden="true">/</span>
       }
-      <a href="#">{ item }</a>
+      if i == len(items)-1 {
+        <span aria-current="page">{ item }</span>
+      } else {
+        <a href={ breadcrumbHref(item) }>{ item }</a>
+      }
     }
   </nav>
 }
 
 templ SectionHeading(kicker, title, copy string) {
-  <div class="section-head"><div><p class="eyebrow">{ kicker }</p><h2>{ title }</h2><p>{ copy }</p></div><a class="text-link" href="/products">View all <span class="material-symbols-outlined">arrow_forward</span></a></div>
+  <div class="section-head"><div><p class="eyebrow">{ kicker }</p><h2>{ title }</h2><p>{ copy }</p></div><a class="text-link" href="/products">View all <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a></div>
+}
+
+templ ProductRating(product viewmodels.Product) {
+  <div class="stars" aria-label={ product.Rating + " out of 5 stars" }>@components.RatingStars(product.Rating) <span>{ product.Rating } ({ product.Reviews } reviews)</span></div>
+}
+
+templ DetailPrice(product viewmodels.Product) {
+  <div class="detail-price">
+    { product.Price }
+    if product.CompareAt != "" {
+      <del>{ product.CompareAt }</del>
+    }
+    if product.Discount != "" {
+      <mark>{ product.Discount }</mark>
+    }
+  </div>
 }
 
 templ ProductCards(products []viewmodels.Product, showAction bool) {
@@ -55,9 +192,23 @@ templ ProductCards(products []viewmodels.Product, showAction bool) {
 
 templ ListingProducts(products []viewmodels.Product) {
   if len(products) == 0 {
-    <div class="empty-state"><span class="material-symbols-outlined">search_off</span><h2>No treasures found</h2><p>Try another search or clear your filters.</p></div>
+    <div class="empty-state"><span class="material-symbols-outlined" aria-hidden="true">search_off</span><h2>No treasures found</h2><p>Try another search or clear your filters.</p></div>
   } else {
     @ProductCards(products, false)
+  }
+}
+
+templ SearchSuggestions(products []viewmodels.Product, query string) {
+  if query == "" {
+  } else if len(products) == 0 {
+    <p class="search-suggestion-empty">No products match “{ query }”.</p>
+  } else {
+    for _, product := range productSlice(products, 0, 5) {
+      <a class="search-suggestion" role="option" id={ "search-suggestion-" + product.Slug } aria-selected="false" href={ "/products/" + product.Slug }><img src={ product.ImageURL } alt="" width="40" height="44"/><span><strong>{ product.Name }</strong><small>By { product.Seller } · { product.Price }</small></span></a>
+    }
+    if query != "" {
+      <a class="search-suggestion-all" href={ "/search?q=" + url.QueryEscape(query) }>View all results</a>
+    }
   }
 }
 
@@ -73,44 +224,54 @@ templ CategoryCards(categories []viewmodels.Category) {
   }
 }
 
+templ CategorySidebarLinks(categories []viewmodels.Category) {
+  for _, category := range categories {
+    <a href={ "/products?category=" + category.Slug }>{ category.Name } <span>{ category.Products }</span></a>
+  }
+}
+
 templ SellerCards(sellers []viewmodels.Seller) {
   for _, seller := range sellers {
-    <a class="seller-card" href={ "/makers/" + seller.Slug }><img src={ seller.ImageURL } alt={ seller.Name } loading="lazy"/><span class="seller-card-copy"><b>{ seller.Name }</b><small>{ seller.Location }</small><em>{ seller.Description }</em><strong>Explore store <span class="material-symbols-outlined">arrow_forward</span></strong></span></a>
+    <a class="seller-card" href={ "/makers/" + seller.Slug }><img src={ seller.ImageURL } alt={ seller.Name } loading="lazy" width="320" height="320"/><span class="seller-card-copy"><b>{ seller.Name }</b><small>{ seller.Location }</small><em>{ seller.Description }</em><strong>Explore store <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></strong></span></a>
   }
 }
 
 templ OrderRows(items []viewmodels.CartItem) {
   for _, item := range items {
-    <div class="order-item"><img src={ item.Product.ImageURL } alt={ item.Product.Name }/><div><b>{ item.Product.Name }</b><small>Qty: { item.Quantity } | { item.Product.Location }</small><strong>{ item.Product.Price }</strong></div><a class="outline-button" href={ "/products/" + item.Product.Slug }>View item</a></div>
+    <div class="order-item"><img src={ item.Product.ImageURL } alt={ item.Product.Name } width="160" height="173" srcset={ item.Product.ImageSrcSet } sizes="160px"/><div><b>{ item.Product.Name }</b><small>Qty: { item.Quantity } | { item.Product.Location }</small><strong>{ item.Product.Price }</strong></div><a class="outline-button" href={ "/products/" + item.Product.Slug }>View item</a></div>
   }
 }
 
 templ OrderDetailRows(items []viewmodels.CartItem) {
   for _, item := range items {
-    <article class="order-line"><img src={ item.Product.ImageURL } alt=""/><span><b>{ item.Product.Name }</b><small>Qty: { item.Quantity } | Sold by { item.Product.Seller }</small></span><strong>{ item.Product.Price }</strong></article>
+    <article class="order-line"><img src={ item.Product.ImageURL } alt={ item.Product.Name } width="160" height="173" srcset={ item.Product.ImageSrcSet } sizes="160px"/><span><b>{ item.Product.Name }</b><small>Qty: { item.Quantity } | Sold by { item.Product.Seller }</small></span><strong>{ item.Product.Price }</strong></article>
   }
 }
 
 templ HistoryRows(orders []viewmodels.Order) {
   for _, order := range orders {
-    <article class="order-card compact-order"><header><div><p class="eyebrow">{ order.Status }</p><h2>{ order.Number }</h2><small>Placed on { order.Date } | { order.Payment }</small></div><div><strong>{ order.Total }</strong><span class="status">{ order.Status }</span></div></header><div class="compact-order-item"><img src={ order.Items[0].Product.ImageURL } alt={ order.Items[0].Product.Name }/><span>{ order.Items[0].Product.Name }<small>{ len(order.Items) } item</small></span><a href="/orders/%23WC2504267819">View details <span class="material-symbols-outlined">arrow_forward</span></a></div></article>
+    <article class="order-card compact-order"><header><div><p class="eyebrow">{ order.Status }</p><h2>{ order.Number }</h2><small>Placed on { order.Date } | { order.Payment }</small></div><div><strong>{ order.Total }</strong><span class="status">{ order.Status }</span></div></header><div class="compact-order-item">
+      if len(order.Items) > 0 {
+        <img src={ firstCartItemValue(order.Items).Product.ImageURL } alt={ firstCartItemValue(order.Items).Product.Name } width="160" height="173" srcset={ firstCartItemValue(order.Items).Product.ImageSrcSet } sizes="160px"/><span>{ firstCartItemValue(order.Items).Product.Name }<small>{ len(order.Items) } item</small></span>
+      }
+      <a href={ orderPath(order.Number) }>View details <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a></div></article>
   }
 }
 
 templ CartRows(items []viewmodels.CartItem) {
   if len(items) == 0 {
-    <div class="empty-state"><span class="material-symbols-outlined">shopping_bag</span><h2>Your cart is waiting for something special</h2><p>Browse handmade treasures and bring a little India home.</p><a class="primary-button" href="/products">Continue shopping</a></div>
+    <div class="empty-state"><span class="material-symbols-outlined" aria-hidden="true">shopping_bag</span><h2>Your cart is waiting for something special</h2><p>Browse handmade treasures and bring a little India home.</p><a class="primary-button" href="/products">Continue shopping</a></div>
   } else {
     for _, item := range items {
-      <article class="cart-seller"><div class="cart-seller-head"><div><span class="material-symbols-outlined">storefront</span><b>{ item.Product.Seller }</b><small>{ item.Product.Location }</small></div><span class="delivery"><span class="material-symbols-outlined">local_shipping</span> Delivery in { item.Delivery }</span></div><div class="cart-line"><img src={ item.Product.ImageURL } alt={ item.Product.Name }/><div class="cart-line-copy"><span class="badge">{ item.Product.Badge }</span><h2>{ item.Product.Name }</h2><p>Handmade in { item.Product.Location }</p><div class="price"><strong>{ item.Product.Price }</strong><del>{ item.Product.CompareAt }</del></div><div class="cart-line-actions"><span class="quantity-control"><button type="button" hx-post={ "/ui/cart/" + item.Product.Slug } hx-vals='{"delta":"-1"}' hx-select="#page" hx-target="#page">-</button><output>{ item.Quantity }</output><button type="button" hx-post={ "/ui/cart/" + item.Product.Slug } hx-vals='{"delta":"1"}' hx-select="#page" hx-target="#page">+</button></span><button class="text-button" type="button" hx-post={ "/ui/cart/" + item.Product.Slug } hx-vals='{"delta":"-1"}' hx-select="#page" hx-target="#page"><span class="material-symbols-outlined">delete</span> Remove</button><button class="text-button"><span class="material-symbols-outlined">favorite</span> Move to wishlist</button></div></div></div></article>
+      <article class="cart-seller"><div class="cart-seller-head"><div><span class="material-symbols-outlined" aria-hidden="true">storefront</span><b>{ item.Product.Seller }</b><small>{ item.Product.Location }</small></div><span class="delivery"><span class="material-symbols-outlined" aria-hidden="true">local_shipping</span> Delivery in { item.Delivery }</span></div><div class="cart-line"><img src={ item.Product.ImageURL } alt={ item.Product.Name } width="160" height="173" srcset={ item.Product.ImageSrcSet } sizes="160px"/><div class="cart-line-copy"><span class="badge">{ item.Product.Badge }</span><h2>{ item.Product.Name }</h2><p>Handmade in { item.Product.Location }</p><div class="price"><strong>{ item.Product.Price }</strong><del>{ item.Product.CompareAt }</del></div><div class="cart-line-actions"><span class="quantity-control"><button type="button" aria-label={ "Decrease " + item.Product.Name + " quantity" } hx-post={ "/ui/cart/" + item.Product.Slug } hx-vals='{"delta":"-1"}' hx-select="#cart-layout" hx-target="#cart-layout" hx-indicator="#ui-loading" hx-disabled-elt="this">-</button><output aria-live="polite">{ item.Quantity }</output><button type="button" aria-label={ "Increase " + item.Product.Name + " quantity" } hx-post={ "/ui/cart/" + item.Product.Slug } hx-vals='{"delta":"1"}' hx-select="#cart-layout" hx-target="#cart-layout" hx-indicator="#ui-loading" hx-disabled-elt="this">+</button></span><button class="text-button" type="button" hx-post={ "/ui/cart/" + item.Product.Slug } hx-vals='{"delta":"-1"}' hx-select="#cart-layout" hx-target="#cart-layout" hx-indicator="#ui-loading" hx-disabled-elt="this"><span class="material-symbols-outlined" aria-hidden="true">delete</span> Remove</button><button class="text-button" type="button" hx-post={ "/ui/wishlist/" + item.Product.Slug } hx-vals='{"source":"cart"}' hx-target="#cart-layout" hx-select="#cart-layout" hx-indicator="#ui-loading" hx-disabled-elt="this"><span class="material-symbols-outlined" aria-hidden="true">favorite</span> Move to wishlist</button></div></div></div></article>
     }
   }
-  <div class="cart-note"><span class="material-symbols-outlined">volunteer_activism</span><div><b>You are supporting independent makers</b><small>Every order helps preserve a living craft tradition.</small></div></div>
+  <div class="cart-note"><span class="material-symbols-outlined" aria-hidden="true">volunteer_activism</span><div><b>You are supporting independent makers</b><small>Every order helps preserve a living craft tradition.</small></div></div>
 }
 
 templ CheckoutItems(items []viewmodels.CartItem) {
   for _, item := range items {
-    <div class="checkout-item"><img src={ item.Product.ImageURL } alt=""/><div><b>{ item.Product.Seller }</b><p>{ item.Product.Name } | Qty: { item.Quantity } | { item.Product.Price }</p><small><span class="material-symbols-outlined">local_shipping</span> Standard delivery: { item.Delivery }</small></div></div>
+    <div class="checkout-item"><img src={ item.Product.ImageURL } alt={ item.Product.Name } width="160" height="173" srcset={ item.Product.ImageSrcSet } sizes="160px"/><div><b>{ item.Product.Seller }</b><p>{ item.Product.Name } | Qty: { item.Quantity } | { item.Product.Price }</p><small><span class="material-symbols-outlined" aria-hidden="true">local_shipping</span> Standard delivery: { item.Delivery }</small></div></div>
   }
 }
 
@@ -122,18 +283,18 @@ templ CheckoutSummaryItems(items []viewmodels.CartItem) {
 
 templ Home(p viewmodels.CustomerPage) {
   @Document(p) {
-    <section class="hero container"><div class="hero-copy"><p class="eyebrow">HANDCRAFTED. ROOTED IN INDIA.</p><h1>Indian arts, crafts<br/>and sarees for a<br/><em>more beautiful tomorrow</em></h1><p>Discover authentic handmade creations from Indian artisans. Timeless traditions. Modern homes. A kinder world.</p><a class="primary-button" href="/categories">Shop our collections <span class="material-symbols-outlined">arrow_forward</span></a><div class="hero-proof"><span><b>01</b> Handmade with love</span><span><b>02</b> Made in India</span><span><b>03</b> Supports 10,000+ artisans</span></div></div><div class="hero-image"><img src="/assets/images/customer/hero-studio.png" alt="Indian artisan working in a craft studio"/><span class="hero-note">Traditions<br/>live on<br/><b>here</b> <span class="material-symbols-outlined">arrow_forward</span></span></div><aside class="hero-aside"><span>More than products.<br/><b>Brighter futures.</b></span><i>+</i></aside></section>
-    <section class="container category-rail home-rail"><a class="category-card" href="/products?category=arts"><img src="/assets/images/customer/madhubani-tree.png" alt="Madhubani painting"/><span><strong>Arts</strong><small>Paintings, sculptures, traditional art &amp; more</small><b>Explore Arts <span class="material-symbols-outlined">arrow_forward</span></b></span></a><a class="category-card" href="/products?category=crafts"><img src="/assets/images/customer/wooden-box.png" alt="Carved wooden jewellery box"/><span><strong>Crafts</strong><small>Home decor, handicrafts, lifestyle &amp; gifts</small><b>Explore Crafts <span class="material-symbols-outlined">arrow_forward</span></b></span></a><a class="category-card" href="/products?category=sarees"><img src="/assets/images/customer/saree-maroon.png" alt="Handwoven maroon saree"/><span><strong>Sarees</strong><small>Handloom, heritage &amp; contemporary</small><b>Explore Sarees <span class="material-symbols-outlined">arrow_forward</span></b></span></a></section>
-    <section class="container offers-rail"><div><span class="offer-icon">%</span><b>Festive offers<br/><strong>Up to 40% off</strong></b><small>Celebrate handmade this season</small></div><div><span class="offer-icon"><span class="material-symbols-outlined">local_shipping</span></span><b>Free shipping<br/><strong>On orders INR 999+</strong></b><small>Across India &amp; beyond</small></div><div><span class="offer-icon"><span class="material-symbols-outlined">favorite</span></span><b>Made with love<br/><strong>From our makers</strong></b><small>Every purchase makes a difference</small></div></section>
+    <section class="hero container"><div class="hero-copy"><p class="eyebrow">HANDCRAFTED. ROOTED IN INDIA.</p><h1>Indian arts, crafts<br/>and sarees for a<br/><em>more beautiful tomorrow</em></h1><p>Discover authentic handmade creations from Indian artisans. Timeless traditions. Modern homes. A kinder world.</p><a class="primary-button" href="/categories">Shop our collections <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a><div class="hero-proof"><span><b>01</b> Handmade with love</span><span><b>02</b> Made in India</span><span><b>03</b> Supports 10,000+ artisans</span></div></div><div class="hero-image"><img src="/assets/images/customer/hero-studio.webp" alt="Indian artisan working in a craft studio" width="1536" height="1024" fetchpriority="high"/><span class="hero-note">Traditions<br/>live on<br/><b>here</b> <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></span></div><aside class="hero-aside"><span>More than products.<br/><b>Brighter futures.</b></span><i>+</i></aside></section>
+    <section class="container category-rail home-rail"><a class="category-card" href="/products?category=arts"><img src="/assets/images/customer/madhubani-tree.webp" alt="Madhubani painting" loading="lazy" width="1254" height="1254"/><span><strong>Arts</strong><small>Paintings, sculptures, traditional art &amp; more</small><b>Explore Arts <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></b></span></a><a class="category-card" href="/products?category=crafts"><img src="/assets/images/customer/wooden-box.webp" alt="Carved wooden jewellery box" loading="lazy" width="1254" height="1254"/><span><strong>Crafts</strong><small>Home decor, handicrafts, lifestyle &amp; gifts</small><b>Explore Crafts <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></b></span></a><a class="category-card" href="/products?category=sarees"><img src="/assets/images/customer/saree-maroon.webp" alt="Handwoven maroon saree" loading="lazy" width="1254" height="1254"/><span><strong>Sarees</strong><small>Handloom, heritage &amp; contemporary</small><b>Explore Sarees <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></b></span></a></section>
+    <section class="container offers-rail"><div><span class="offer-icon">%</span><b>Festive offers<br/><strong>Up to 40% off</strong></b><small>Celebrate handmade this season</small></div><div><span class="offer-icon"><span class="material-symbols-outlined" aria-hidden="true">local_shipping</span></span><b>Free shipping<br/><strong>On orders INR 999+</strong></b><small>Across India &amp; beyond</small></div><div><span class="offer-icon"><span class="material-symbols-outlined" aria-hidden="true">favorite</span></span><b>Made with love<br/><strong>From our makers</strong></b><small>Every purchase makes a difference</small></div></section>
     <section class="container section">
         @SectionHeading("THE GOOD STUFF", "Trending now", "Beautiful things, made slowly and thoughtfully.")<div class="product-grid product-grid--six">
-        @ProductCards(p.Products[:6], true)</div></section>
+        @ProductCards(productSlice(p.Products, 0, 6), true)</div></section>
     <section class="container section">
         @SectionHeading("MEET THE MAKERS", "Stories behind the craft", "The hands, homes and heritage behind every piece.")<div class="seller-grid">@SellerCards(p.Sellers)</div></section>
-    <section class="maker-banner container"><div><p class="eyebrow">A LITTLE MORE HUMAN</p><h2>When you buy handmade,<br/><em>you help a story continue.</em></h2><p>Every order supports an independent maker, keeps a living tradition in motion and makes room for the next generation to create.</p><a class="outline-button" href="/makers/mithila-arts">Meet our makers <span class="material-symbols-outlined">arrow_forward</span></a></div><img src="/assets/images/customer/maker-mithila.png" alt="Madhubani artisan in her studio"/></section>
+    <section class="maker-banner container"><div><p class="eyebrow">A LITTLE MORE HUMAN</p><h2>When you buy handmade,<br/><em>you help a story continue.</em></h2><p>Every order supports an independent maker, keeps a living tradition in motion and makes room for the next generation to create.</p><a class="outline-button" href="/makers/mithila-arts">Meet our makers <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a></div><img src="/assets/images/customer/maker-mithila.webp" alt="Madhubani artisan in her studio" loading="lazy" width="1254" height="1254"/></section>
     <section class="container section collection-section">
-        @SectionHeading("CURATED FOR YOU", "Find your kind of beautiful", "Collections with a little more meaning.")<div class="collection-grid"><a class="collection-card collection-card--large" href="/products?category=sarees"><img src="/assets/images/customer/saree-blue.png" alt="Handloom saree"/><span><small>For every occasion</small><strong>The saree edit</strong><b>Shop handlooms <span class="material-symbols-outlined">arrow_forward</span></b></span></a><a class="collection-card" href="/products?category=home-living"><img src="/assets/images/customer/terracotta-planter.png" alt="Terracotta planter"/><span><small>For your home</small><strong>Earth &amp; object</strong><b>Explore <span class="material-symbols-outlined">arrow_forward</span></b></span></a><a class="collection-card" href="/products?category=gifts"><img src="/assets/images/customer/terracotta-lamp.png" alt="Terracotta diyas"/><span><small>For giving</small><strong>Thoughtful gifts</strong><b>Find a gift <span class="material-symbols-outlined">arrow_forward</span></b></span></a></div></section>
-    <section class="world-strip container"><div><span class="material-symbols-outlined">public</span><h2>From India, to the world</h2><p>Authentic craft, carefully packed and sent wherever home is.</p><a href="/products">Explore global favourites <span class="material-symbols-outlined">arrow_forward</span></a></div><img src="/assets/images/customer/blue-tote.png" alt="Ikat tote bag"/><img src="/assets/images/customer/madhubani-tree.png" alt="Madhubani painting"/></section>
+        @SectionHeading("CURATED FOR YOU", "Find your kind of beautiful", "Collections with a little more meaning.")<div class="collection-grid"><a class="collection-card collection-card--large" href="/products?category=sarees"><img src="/assets/images/customer/saree-blue.webp" alt="Handloom saree" loading="lazy" width="1254" height="1254"/><span><small>For every occasion</small><strong>The saree edit</strong><b>Shop handlooms <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></b></span></a><a class="collection-card" href="/products?category=home-living"><img src="/assets/images/customer/terracotta-planter.webp" alt="Terracotta planter" loading="lazy" width="1254" height="1254"/><span><small>For your home</small><strong>Earth &amp; object</strong><b>Explore <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></b></span></a><a class="collection-card" href="/products?category=gifts"><img src="/assets/images/customer/terracotta-lamp.webp" alt="Terracotta diyas" loading="lazy" width="1254" height="1254"/><span><small>For giving</small><strong>Thoughtful gifts</strong><b>Find a gift <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></b></span></a></div></section>
+    <section class="world-strip container"><div><span class="material-symbols-outlined" aria-hidden="true">public</span><h2>From India, to the world</h2><p>Authentic craft, carefully packed and sent wherever home is.</p><a href="/products">Explore global favourites <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a></div><img src="/assets/images/customer/blue-tote.webp" alt="Ikat tote bag" loading="lazy" width="1254" height="1254"/><img src="/assets/images/customer/madhubani-tree.webp" alt="Madhubani painting" loading="lazy" width="1254" height="1254"/></section>
   }
 }
 
@@ -141,49 +302,247 @@ templ Categories(p viewmodels.CustomerPage) {
   @Document(p) {
     <section class="container page-intro categories-intro">
         @Breadcrumb("Home", "Categories")<p class="eyebrow">TAKE YOUR TIME</p><h1>Explore all categories</h1><p>From heirloom weaves to objects for everyday living, find something made with intention.</p></section>
-    <section class="container category-layout"><aside class="category-sidebar"><h2>Browse by craft</h2><a class="active" href="/categories">All categories <span>12</span></a><a href="/products?category=arts">Arts <span>148</span></a><a href="/products?category=crafts">Crafts <span>326</span></a><a href="/products?category=sarees">Sarees <span>214</span></a><a href="/products?category=home-living">Home &amp; Living <span>198</span></a><a href="/products?category=fashion">Fashion &amp; Accessories <span>176</span></a><a href="/products?category=gifts">Gifts &amp; Occasions <span>134</span></a><div class="sidebar-note"><span class="material-symbols-outlined">volunteer_activism</span><b>Every purchase supports an artisan</b><small>Shop with purpose, keep traditions alive.</small></div></aside><div class="category-content"><div class="category-feature"><img src="/assets/images/customer/maker-mithila.png" alt="Madhubani artisan painting"/><div><p class="eyebrow">THE WEEVCRAFTS DIFFERENCE</p><h2>Beautiful by nature.<br/><em>Meaningful by design.</em></h2><p>Small-batch pieces from verified makers across India, with the story always kept close.</p><a class="primary-button" href="/makers/mithila-arts">Meet the makers <span class="material-symbols-outlined">arrow_forward</span></a></div></div><div class="category-card-grid">@CategoryCards(p.Categories)</div><section class="subcategories"><div class="subcat-panel"><p class="eyebrow">START HERE</p><h2>Shop by craft</h2><div class="subcat-links"><a href="/products?category=arts"><b>Madhubani painting</b><small>Folk art with a story</small></a><a href="/products?category=crafts"><b>Brass &amp; metalwork</b><small>Objects that last</small></a><a href="/products?category=sarees"><b>Handloom sarees</b><small>Woven with patience</small></a><a href="/products?category=home-living"><b>Pottery &amp; ceramics</b><small>Earthy everyday pieces</small></a></div></div><div class="subcat-panel subcat-panel--dark"><p class="eyebrow">OCCASION EDIT</p><h2>Gifts that feel personal</h2><p>For new homes, new beginnings and every little celebration in between.</p><a class="text-link inverse-link" href="/products?category=gifts">Shop gifting <span class="material-symbols-outlined">arrow_forward</span></a></div></section></div></section>
+    <section class="container category-layout"><aside class="category-sidebar"><h2>Browse by craft</h2><a class="active" aria-current="page" href="/categories">All categories <span>{ len(p.Categories) }</span></a>@CategorySidebarLinks(p.Categories)<div class="sidebar-note"><span class="material-symbols-outlined" aria-hidden="true">volunteer_activism</span><b>Every purchase supports an artisan</b><small>Shop with purpose, keep traditions alive.</small></div></aside><div class="category-content"><div class="category-feature"><img src="/assets/images/customer/maker-mithila.webp" alt="Madhubani artisan painting" loading="lazy" width="1254" height="1254"/><div><p class="eyebrow">THE WEEVCRAFTS DIFFERENCE</p><h2>Beautiful by nature.<br/><em>Meaningful by design.</em></h2><p>Small-batch pieces from verified makers across India, with the story always kept close.</p><a class="primary-button" href="/makers/mithila-arts">Meet the makers <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a></div></div><div class="category-card-grid">@CategoryCards(p.Categories)</div><section class="subcategories"><div class="subcat-panel"><p class="eyebrow">START HERE</p><h2>Shop by craft</h2><div class="subcat-links"><a href="/products?category=arts"><b>Madhubani painting</b><small>Folk art with a story</small></a><a href="/products?category=crafts"><b>Brass &amp; metalwork</b><small>Objects that last</small></a><a href="/products?category=sarees"><b>Handloom sarees</b><small>Woven with patience</small></a><a href="/products?category=home-living"><b>Pottery &amp; ceramics</b><small>Earthy everyday pieces</small></a></div></div><div class="subcat-panel subcat-panel--dark"><p class="eyebrow">OCCASION EDIT</p><h2>Gifts that feel personal</h2><p>For new homes, new beginnings and every little celebration in between.</p><a class="text-link inverse-link" href="/products?category=gifts">Shop gifting <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a></div></section></div></section>
     <section class="container section category-collections">
-        @SectionHeading("CURATED EDITS", "A considered collection", "Thoughtful picks for the people and spaces you love.")<div class="collection-grid"><a class="collection-card" href="/products?category=home-living"><img src="/assets/images/customer/wooden-box.png" alt="Wooden jewellery box"/><span><small>Slow living</small><strong>Little luxuries</strong><b>Explore <span class="material-symbols-outlined">arrow_forward</span></b></span></a><a class="collection-card collection-card--large" href="/products?category=fashion"><img src="/assets/images/customer/blue-tote.png" alt="Ikat tote bag"/><span><small>Made to move with you</small><strong>Everyday craft</strong><b>Shop the edit <span class="material-symbols-outlined">arrow_forward</span></b></span></a><a class="collection-card" href="/products?category=gifts"><img src="/assets/images/customer/terracotta-lamp.png" alt="Terracotta lamps"/><span><small>Festive favourites</small><strong>Gifts with a soul</strong><b>Find a gift <span class="material-symbols-outlined">arrow_forward</span></b></span></a></div></section>
+        @SectionHeading("CURATED EDITS", "A considered collection", "Thoughtful picks for the people and spaces you love.")<div class="collection-grid"><a class="collection-card" href="/products?category=home-living"><img src="/assets/images/customer/wooden-box.webp" alt="Wooden jewellery box" loading="lazy" width="1254" height="1254"/><span><small>Slow living</small><strong>Little luxuries</strong><b>Explore <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></b></span></a><a class="collection-card collection-card--large" href="/products?category=fashion"><img src="/assets/images/customer/blue-tote.webp" alt="Ikat tote bag" loading="lazy" width="1254" height="1254"/><span><small>Made to move with you</small><strong>Everyday craft</strong><b>Shop the edit <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></b></span></a><a class="collection-card" href="/products?category=gifts"><img src="/assets/images/customer/terracotta-lamp.webp" alt="Terracotta lamps" loading="lazy" width="1254" height="1254"/><span><small>Festive favourites</small><strong>Gifts with a soul</strong><b>Find a gift <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></b></span></a></div></section>
+  }
+}
+
+templ Brands(p viewmodels.CustomerPage) {
+  @Document(p) {
+    <section class="container page-intro brands-intro">
+      @Breadcrumb("Home", "Brands")
+      <p class="eyebrow">THE PEOPLE BEHIND THE PIECES</p>
+      <h1>Explore brands with a story</h1>
+      <p>Meet the independent studios and maker-led brands shaping a more thoughtful marketplace.</p>
+    </section>
+    <section class="container brand-directory">
+      for _, brand := range p.Brands {
+        <a class="brand-directory-card" href={ "/brands/" + brand.Slug }>
+          <img src={ brand.ImageURL } alt={ brand.Name } loading="lazy" width="520" height="320"/>
+          <div><span class="badge">{ brand.Location }</span><h2>{ brand.Name }</h2><p>{ brand.Tagline }</p><small>{ brand.Description }</small><strong>View brand story <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></strong></div>
+        </a>
+      }
+    </section>
+  }
+}
+
+templ BrandDetail(p viewmodels.CustomerPage, brand viewmodels.Brand) {
+  @Document(p) {
+    <section class="container page-intro brand-detail-intro">
+      @Breadcrumb("Home", "Brands", brand.Name)
+      <p class="eyebrow">WEEVCRAFTS BRAND PROFILE</p>
+      <h1>{ brand.Name }</h1>
+      <p>{ brand.Tagline } · { brand.Location }</p>
+    </section>
+    <section class="container brand-detail-layout">
+      <article class="brand-story-card"><img src={ brand.ImageURL } alt={ brand.Name } width="760" height="480"/><div><span class="badge">Verified maker brand</span><h2>Made slowly, made with meaning.</h2><p>{ brand.Description }</p><dl><div><dt>Based in</dt><dd>{ brand.Location }</dd></div><div><dt>Available pieces</dt><dd>{ brand.Products }+</dd></div></dl><a class="outline-button" href={ "/makers/" + brand.Slug }>Visit maker profile <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a></div></article>
+      <aside class="summary brand-detail-aside"><span class="material-symbols-outlined" aria-hidden="true">verified</span><h2>Shop with confidence</h2><p>Every brand is reviewed for craft quality, clear maker information and thoughtful fulfilment.</p><a class="primary-button full" href={ "/products?brand=" + brand.Name }>Shop this brand</a><a class="text-link" href="/contact">Ask about a brand <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a></aside>
+    </section>
+    <section class="container section brand-products"><div class="section-head"><div><p class="eyebrow">FROM THIS BRAND</p><h2>Pieces from { brand.Name }</h2><p>Explore the current collection from the studio.</p></div><a class="text-link" href={ "/products?brand=" + brand.Name }>View all <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a></div><div class="product-grid product-grid--four">@ProductCards(brandProducts(p.Products, brand.Name), true)</div></section>
+  }
+}
+
+templ Deals(p viewmodels.CustomerPage) {
+  @Document(p) {
+    <section class="container page-intro deals-intro">
+      @Breadcrumb("Home", "Deals")
+      <p class="eyebrow">A LITTLE MORE REASON TO BRING IT HOME</p>
+      <h1>Handmade deals</h1>
+      <p>Thoughtful pieces, seasonal offers and maker-first value. The craft stays special; the price feels a little easier.</p>
+    </section>
+    <section class="container deals-layout"><div><div class="deals-banner"><div><span class="badge">Limited-time edit</span><h2>Beautiful things, better together.</h2><p>Save on selected handmade pieces while supporting the people who made them.</p><a class="primary-button" href="#deal-grid">Shop offers <span class="material-symbols-outlined" aria-hidden="true">arrow_downward</span></a></div><span class="deals-banner-mark">%</span></div><div id="deal-grid" class="product-grid product-grid--four deals-grid">@ProductCards(p.Products, true)</div></div><aside class="summary deals-aside"><span class="material-symbols-outlined" aria-hidden="true">local_offer</span><h2>Offers with a purpose</h2><p>Discounts are shown from each maker's listed price. Shipping and availability stay clear at checkout.</p><a class="outline-button full" href="/products">Browse all products</a><a class="text-link" href="/brands">Meet the brands <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a></aside></section>
+  }
+}
+
+templ FilterControl(filters url.Values, counts map[string]int, inputType, key, value, label string) {
+  if hasFilter(filters, key, value) {
+    <label><input type={ inputType } name={ key } value={ value } checked/> { label } @FilterSuffix(filterCount(counts, key, value))</label>
+  } else {
+    <label><input type={ inputType } name={ key } value={ value }/> { label } @FilterSuffix(filterCount(counts, key, value))</label>
+  }
+}
+
+templ FilterSuffix(suffix string) {
+  if suffix != "" {
+    <span>{ suffix }</span>
+  }
+}
+
+templ SortOption(value, label, current string) {
+  if value == current {
+    <option value={ value } selected>{ label }</option>
+  } else {
+    <option value={ value }>{ label }</option>
   }
 }
 
 templ Listing(p viewmodels.CustomerPage) {
   @Document(p) {
     <section class="container page-intro listing-intro">
-        @Breadcrumb("Home", "Search results")<p class="eyebrow">TAKE A CLOSER LOOK</p><h1>Handloom sarees</h1><p>Timeless weaves, contemporary colours and the stories of the people who make them.</p></section>
-    <section class="container listing-layout"><aside class="filter-sidebar"><div class="filter-head"><h2>Filter by</h2><a href="/search">Clear all</a></div><details open><summary>Categories <span class="material-symbols-outlined">expand_less</span></summary><label><input type="checkbox" checked/> Sarees <span>(214)</span></label><label><input type="checkbox"/> Handloom <span>(98)</span></label><label><input type="checkbox"/> Silk cotton <span>(72)</span></label><label><input type="checkbox"/> Chanderi <span>(44)</span></label></details><details open><summary>Price <span class="material-symbols-outlined">expand_less</span></summary><label><input type="radio" name="price"/> Under INR 1,000</label><label><input type="radio" name="price"/> INR 1,000 - 2,500</label><label><input type="radio" name="price"/> INR 2,500 - 5,000</label><label><input type="radio" name="price"/> Above INR 5,000</label></details><details open><summary>Customer rating <span class="material-symbols-outlined">expand_less</span></summary><label><input type="checkbox"/> 4.5 and above</label><label><input type="checkbox"/> 4.0 and above</label></details><details open><summary>Availability <span class="material-symbols-outlined">expand_less</span></summary><label><input type="checkbox" checked/> In stock <span>(1,196)</span></label></details><details open><summary>Seller location <span class="material-symbols-outlined">expand_less</span></summary><label><input type="checkbox"/> Madhya Pradesh</label><label><input type="checkbox"/> Bihar</label><label><input type="checkbox"/> Rajasthan</label></details></aside><div class="listing-results"><div class="results-toolbar"><div><b>{ len(p.Products) } results</b><span class="filter-chips"><button type="button">Handloom sarees <span>×</span></button><button type="button">In stock <span>×</span></button></span></div><label>Sort by <select name="sort" hx-get="/search" hx-select="#page" hx-target="#page"><option>Relevance</option><option>Price: Low to High</option><option>Newest</option></select></label></div><div class="listing-banner"><div><p class="eyebrow">THE HANDLOOM EDIT</p><h2>Woven slowly.<br/><em>Worn forever.</em></h2><p>Meet the weavers keeping India's most beautiful textiles in motion.</p><a href="/makers/mithila-arts">Explore the stories <span class="material-symbols-outlined">arrow_forward</span></a></div><img src="/assets/images/customer/saree-blue.png" alt="Blue handloom saree"/></div><div class="product-grid product-grid--four">
-        @ListingProducts(p.Products)</div><nav class="pagination" aria-label="Pagination"><a href="#"><span class="material-symbols-outlined">chevron_left</span></a><a class="active" href="#">1</a><a href="#">2</a><a href="#">3</a><span>...</span><a href="#">104</a><a href="#"><span class="material-symbols-outlined">chevron_right</span></a></nav></div></section>
-    <section class="container international-banner"><div><span class="material-symbols-outlined">public</span><div><p class="eyebrow">INDIAN CRAFT, EVERYWHERE</p><h2>We ship globally</h2><p>Carefully packed, lovingly sent. Your next heirloom is closer than you think.</p></div></div><a class="outline-button" href="/products">Shop global favourites <span class="material-symbols-outlined">arrow_forward</span></a></section>
+      @Breadcrumb("Home", "Search results")
+      <p class="eyebrow">TAKE A CLOSER LOOK</p>
+      <h1>{ listingTitle(p) }</h1>
+      <p>{ listingDescription(p) }</p>
+    </section>
+    <form id="listing-filters" class="container listing-filter-form" method="get" action="/products" hx-get="/products" hx-select="#listing-results" hx-target="#listing-results" hx-push-url="true" hx-trigger="change" hx-indicator="#ui-loading" x-data="{filters:false}" @keydown.escape.window="if (filters) { filters=false; $nextTick(() => $refs.filterToggle.focus()) }" @keydown.tab.window="if (filters) { const focusables = $refs.filterPanel.querySelectorAll('button,a,input,summary,select,textarea'); const first = focusables[0]; const last = focusables[focusables.length - 1]; if ($event.shiftKey && document.activeElement === first) { $event.preventDefault(); last.focus(); } else if (!$event.shiftKey && document.activeElement === last) { $event.preventDefault(); first.focus(); } }">
+      <input type="hidden" name="q" value={ p.Query }/><div class="mobile-filter-toolbar"><button class="mobile-filter-toggle" type="button" x-ref="filterToggle" aria-label="Open product filters" aria-controls="listing-filter-sidebar" :aria-expanded="filters" @click="filters=true; $nextTick(() => $refs.filterClose.focus())"><span class="material-symbols-outlined" aria-hidden="true">tune</span> Filters</button></div>
+      <section class="listing-layout">
+        <aside id="listing-filter-sidebar" x-ref="filterPanel" class="filter-sidebar" aria-label="Product filters" :class="{ 'is-open': filters }"><button class="mobile-filter-close" type="button" x-ref="filterClose" @click="filters=false; $nextTick(() => $refs.filterToggle.focus())">Close filters</button>
+          <div class="filter-head"><h2>Filter by</h2><a href="/products">Clear all</a></div>
+          <details open>
+            <summary>Categories <span class="material-symbols-outlined" aria-hidden="true">expand_less</span></summary>
+            @FilterControl(p.Filters, p.FilterCounts, "checkbox", "category", "sarees", "Sarees")
+            @FilterControl(p.Filters, p.FilterCounts, "checkbox", "brand", "handloom", "Handloom")
+            @FilterControl(p.Filters, p.FilterCounts, "checkbox", "brand", "silk cotton", "Silk cotton")
+            @FilterControl(p.Filters, p.FilterCounts, "checkbox", "brand", "chanderi", "Chanderi")
+          </details>
+          <details open>
+            <summary>Price <span class="material-symbols-outlined" aria-hidden="true">expand_less</span></summary>
+            @FilterControl(p.Filters, p.FilterCounts, "radio", "price", "under-1000", "Under INR 1,000")
+            @FilterControl(p.Filters, p.FilterCounts, "radio", "price", "1000-2500", "INR 1,000 - 2,500")
+            @FilterControl(p.Filters, p.FilterCounts, "radio", "price", "2500-5000", "INR 2,500 - 5,000")
+            @FilterControl(p.Filters, p.FilterCounts, "radio", "price", "over-5000", "Above INR 5,000")
+          </details>
+          <details open>
+            <summary>Customer rating <span class="material-symbols-outlined" aria-hidden="true">expand_less</span></summary>
+            @FilterControl(p.Filters, p.FilterCounts, "checkbox", "rating", "4.5+", "4.5 and above")
+            @FilterControl(p.Filters, p.FilterCounts, "checkbox", "rating", "4.0+", "4.0 and above")
+          </details>
+          <details open>
+            <summary>Availability <span class="material-symbols-outlined" aria-hidden="true">expand_less</span></summary>
+            @FilterControl(p.Filters, p.FilterCounts, "checkbox", "availability", "in-stock", "In stock")
+          </details>
+          <details open>
+            <summary>Seller location <span class="material-symbols-outlined" aria-hidden="true">expand_less</span></summary>
+            @FilterControl(p.Filters, p.FilterCounts, "checkbox", "location", "Madhya Pradesh", "Madhya Pradesh")
+            @FilterControl(p.Filters, p.FilterCounts, "checkbox", "location", "Bihar", "Bihar")
+            @FilterControl(p.Filters, p.FilterCounts, "checkbox", "location", "Rajasthan", "Rajasthan")
+          </details>
+        </aside><button class="filter-backdrop" type="button" aria-label="Close filters" @click="filters=false; $nextTick(() => $refs.filterToggle.focus())"></button>
+        <div id="listing-results" class="listing-results">
+          <div class="results-toolbar">
+            <div><b>{ len(p.Products) } results</b><span class="filter-chips"><span class="filter-chip-clear">Filtered view</span></span></div>
+            <label for="listing-sort">Sort by
+              <select id="listing-sort" name="sort">
+                @SortOption("relevance", "Relevance", normalizedSort(p.Sort))
+                @SortOption("price-asc", "Price: Low to High", normalizedSort(p.Sort))
+                @SortOption("price-desc", "Price: High to Low", normalizedSort(p.Sort))
+                @SortOption("newest", "Newest", normalizedSort(p.Sort))
+              </select>
+            </label>
+          </div>
+          <div class="listing-banner">
+            <div><p class="eyebrow">THE HANDLOOM EDIT</p><h2>Woven slowly.<br/><em>Worn forever.</em></h2><p>Meet the weavers keeping India's most beautiful textiles in motion.</p><a href="/makers/mithila-arts">Explore the stories <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a></div>
+            <img src="/assets/images/customer/saree-blue.webp" alt="Blue handloom saree" width="360" height="300"/>
+          </div>
+          <div class="product-grid product-grid--four">@ListingProducts(p.Products)</div>
+          <nav class="pagination" aria-label="Pagination">
+            if p.Page > 1 {
+              <a href={ listingURL(p, p.Page-1) } aria-label="Previous page"><span class="material-symbols-outlined" aria-hidden="true">chevron_left</span></a>
+            } else {
+              <span aria-hidden="true"><span class="material-symbols-outlined" aria-hidden="true">chevron_left</span></span>
+            }
+            for page := 1; page <= p.Pages; page++ {
+              <a href={ listingURL(p, page) } class={ paginationClass(page, p.Page) } aria-current={ paginationCurrent(page, p.Page) }>{ pageLabel(page) }</a>
+            }
+            if p.Page < p.Pages {
+              <a href={ listingURL(p, p.Page+1) } aria-label="Next page"><span class="material-symbols-outlined" aria-hidden="true">chevron_right</span></a>
+            } else {
+              <span aria-hidden="true"><span class="material-symbols-outlined" aria-hidden="true">chevron_right</span></span>
+            }
+          </nav>
+        </div>
+      </section>
+    </form>
+    <section class="container international-banner"><div><span class="material-symbols-outlined" aria-hidden="true">public</span><div><p class="eyebrow">INDIAN CRAFT, EVERYWHERE</p><h2>We ship globally</h2><p>Carefully packed, lovingly sent. Your next heirloom is closer than you think.</p></div></div><a class="outline-button" href="/products">Shop global favourites <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a></section>
   }
 }
+
 
 templ ProductDetail(p viewmodels.CustomerPage) {
   @Document(p) {
     <section class="container product-detail">
-        @Breadcrumb("Home", "Sarees", "Chanderi Silk Cotton Saree")<div class="detail-grid"><div class="gallery" x-data="{active:0}"><div class="thumbs"><button type="button" @click="active=0"><img src="/assets/images/customer/saree-maroon.png" alt="Maroon saree"/></button><button type="button" @click="active=1"><img src="/assets/images/customer/saree-blue.png" alt="Blue saree"/></button><button type="button" @click="active=2"><img src="/assets/images/customer/maker-mithila.png" alt="Maker story"/></button></div><div class="gallery-main"><img x-show="active===0" src="/assets/images/customer/saree-maroon.png" alt="Chanderi Silk Cotton Saree - Royal Maroon"/><img x-show="active===1" x-cloak src="/assets/images/customer/saree-blue.png" alt="Chanderi Silk Cotton Saree - Royal Maroon"/><img x-show="active===2" x-cloak src="/assets/images/customer/maker-mithila.png" alt="Chanderi artisan"/><button class="gallery-heart" type="button" aria-label="Add to wishlist"><span class="material-symbols-outlined">favorite</span></button></div><small class="gallery-caption">Handwoven in Maheshwar, Madhya Pradesh</small></div><div class="detail-copy"><span class="badge">Bestseller</span><h1>Chanderi Silk Cotton Saree - Royal Maroon</h1><p class="lead">A timeless weave of elegance and tradition</p><div class="stars"><span class="material-symbols-outlined">star</span><span class="material-symbols-outlined">star</span><span class="material-symbols-outlined">star</span><span class="material-symbols-outlined">star</span><span class="material-symbols-outlined">star</span> <span>4.8 (218 reviews)</span></div><a class="seller-line" href="/makers/mithila-arts"><img src="/assets/images/customer/maker-mithila.png" alt="Weaver's Touch"/><span>By Weaver's Touch<small><span class="material-symbols-outlined">location_on</span> Maheshwar, Madhya Pradesh</small></span><span class="material-symbols-outlined">chevron_right</span></a><div class="detail-price">INR 5,999 <del>INR 7,999</del> <mark>25% OFF</mark></div><p class="tax-note">Inclusive of all taxes</p><p class="description">Lightweight, elegant and effortlessly graceful, this handwoven Chanderi saree blends the richness of silk with the comfort of cotton. A beautiful choice for festive occasions and special gatherings.</p><fieldset><legend>Color: <b>Royal Maroon</b></legend><button class="swatch maroon" aria-label="Royal Maroon"></button><button class="swatch green" aria-label="Forest Green"></button><button class="swatch blue" aria-label="Peacock Blue"></button></fieldset><div class="quantity-row"><label>Quantity <span class="quantity-control"><button type="button">-</button><output>1</output><button type="button">+</button></span></label><span class="stock"><span class="material-symbols-outlined">check_circle</span> In stock <small>Only 3 left</small></span></div><div class="detail-actions"><button class="outline-button" hx-post="/ui/cart/chanderi-royal" hx-select="#page" hx-target="#page"><span class="material-symbols-outlined">shopping_bag</span> Add to cart</button><button class="primary-button" hx-post="/ui/cart/chanderi-royal" hx-select="#cart-count" hx-target="#cart-count"><span class="material-symbols-outlined">bolt</span> Buy now</button></div><form class="pincode"><span class="material-symbols-outlined">location_on</span><input placeholder="Enter pincode" aria-label="Pincode"/><button type="button">Check</button></form><div class="benefits"><span><span class="material-symbols-outlined">local_shipping</span><b>Estimated delivery</b><small>4 - 6 days</small></span><span><span class="material-symbols-outlined">autorenew</span><b>Easy returns</b><small>Within 7 days</small></span><span><span class="material-symbols-outlined">verified_user</span><b>Secure payments</b><small>100% safe and trusted</small></span><span><span class="material-symbols-outlined">public</span><b>International shipping</b><small>To 50+ countries</small></span></div></div></div><section class="detail-tabs" x-data="{tab:'description'}"><nav><button class="active" @click="tab='description'">Product description</button><button @click="tab='specs'">Specifications</button><button @click="tab='story'">Maker story</button><button @click="tab='reviews'">Reviews (218)</button></nav><div x-show="tab==='description'"><p>This exquisite Chanderi Silk Cotton saree is a celebration of India's rich handloom heritage. Woven by skilled artisans in Maheshwar, it features delicate zari butis across the body and a rich traditional border.</p><ul><li>Handwoven by skilled artisans</li><li>Lightweight, breathable and easy to drape</li><li>Perfect for festive and special occasions</li></ul></div><div x-show="tab==='specs'" x-cloak><div class="spec-grid"><span>Fabric <b>Chanderi silk cotton</b></span><span>Color <b>Royal maroon</b></span><span>Weave <b>Handloom</b></span><span>Care <b>Dry clean only</b></span></div></div><div x-show="tab==='story'" x-cloak><p>Weaver's Touch keeps Maheshwar's traditional techniques alive for contemporary homes, working directly with independent weaving families.</p></div><div x-show="tab==='reviews'" x-cloak><div class="review-highlight"><strong>4.8</strong><span>Excellent<br/>218 verified reviews</span></div><p>"The colour is even more beautiful in person. Such a light, comfortable weave." - Verified customer</p></div></section></section><section class="container section">
-        @SectionHeading("YOU MAY ALSO LIKE", "More made-for-you finds", "Keep exploring the beautiful things our makers make.")<div class="product-grid product-grid--four">
-        @ProductCards(p.Products[3:7], true)</div></section><section class="container seller-callout"><img src="/assets/images/customer/maker-mithila.png" alt="Weaver's Touch"/><div><p class="eyebrow">THE MAKER BEHIND THE PIECE</p><h2>Meet Weaver's Touch</h2><p>Traditional handlooms for a brighter, more thoughtful wardrobe. Based in Maheshwar, Madhya Pradesh.</p><a class="text-link" href="/makers/mithila-arts">Visit the maker store <span class="material-symbols-outlined">arrow_forward</span></a></div></section>
+      @Breadcrumb("Home", p.Product.Category, p.Product.Name)
+      <div class="detail-grid">
+        <div class="gallery" x-data="{active:0}">
+          <div class="thumbs">
+            <button type="button" aria-label={ "Show " + p.Product.Name + " primary image" } @click="active=0"><img src={ p.Product.ImageURL } alt={ p.Product.Name } width="180" height="198"/></button>
+            <button type="button" aria-label={ "Show " + p.Product.Name + " alternate image" } @click="active=1"><img src="/assets/images/customer/saree-blue.webp" alt={ p.Product.Name + " alternate view" } loading="lazy" width="180" height="180"/></button>
+            <button type="button" aria-label={ "Show " + p.Product.Seller + " maker image" } @click="active=2"><img src="/assets/images/customer/maker-mithila.webp" alt={ p.Product.Seller + " maker story" } loading="lazy" width="180" height="180"/></button>
+          </div>
+          <div class="gallery-main">
+            <img x-show="active===0" src={ p.Product.ImageURL } alt={ p.Product.Name } width="800" height="896" srcset={ p.Product.ImageSrcSet } sizes="(max-width: 720px) 100vw, 55vw"/>
+            <img x-show="active===1" x-cloak src="/assets/images/customer/saree-blue.webp" alt={ p.Product.Name + " alternate view" } width="800" height="800" loading="lazy"/>
+            <img x-show="active===2" x-cloak src="/assets/images/customer/maker-mithila.webp" alt={ p.Product.Seller + " maker story" } width="800" height="800" loading="lazy"/>
+            <button class="gallery-heart" type="button" data-product-slug={ p.Product.Slug } aria-label={ "Save " + p.Product.Name } hx-post={ "/ui/wishlist/" + p.Product.Slug } hx-vals='{"source":"detail"}' hx-target="#wishlist-count" hx-swap="none" hx-indicator="#ui-loading" hx-disabled-elt="this"><span class="material-symbols-outlined" aria-hidden="true">favorite</span></button>
+          </div>
+          <small class="gallery-caption">Made in { p.Product.Location }</small>
+        </div>
+        <div class="detail-copy">
+          <span class="badge">{ p.Product.Badge }</span><h1>{ p.Product.Name }</h1><p class="lead">{ productLead(p.Product) }</p>@ProductRating(p.Product)
+          <a class="seller-line" href={ makerPath(p.Product.Seller) }><img src={ p.Product.ImageURL } alt={ p.Product.Seller } loading="lazy" width="64" height="64"/><span>By { p.Product.Seller }<small><span class="material-symbols-outlined" aria-hidden="true">location_on</span> { p.Product.Location }</small></span><span class="material-symbols-outlined" aria-hidden="true">chevron_right</span></a>
+          @DetailPrice(p.Product)<p class="tax-note">Inclusive of all taxes</p><p class="description">{ productDescription(p.Product) }</p>
+          <fieldset x-data={ "color: '" + productColor(p.Product) + "'" }><legend>Color: <b x-text="color">{ productColor(p.Product) }</b></legend><button type="button" class="swatch maroon" :aria-pressed="color === 'Royal maroon'" @click="color='Royal maroon'" aria-label="Royal maroon"></button><button type="button" class="swatch green" :aria-pressed="color === 'Natural earth'" @click="color='Natural earth'" aria-label="Natural earth"></button><button type="button" class="swatch blue" :aria-pressed="color === 'Indigo blue'" @click="color='Indigo blue'" aria-label="Indigo blue"></button></fieldset>
+          <div class="quantity-row"><label>Quantity <span class="quantity-control"><button type="button" aria-label={ "Decrease " + p.Product.Name + " quantity" } @click="detailQuantity=Math.max(1, detailQuantity-1)">-</button><output aria-live="polite" x-text="detailQuantity">1</output><button type="button" aria-label={ "Increase " + p.Product.Name + " quantity" } @click="detailQuantity=Math.min(99, detailQuantity+1)">+</button></span></label><span class="stock"><span class="material-symbols-outlined" aria-hidden="true">check_circle</span> { productStockMessage(p.Product) }</span></div>
+          <input id="detail-quantity" type="hidden" name="quantity" :value="detailQuantity"/>
+          <div class="detail-actions"><button type="button" class="outline-button" hx-post={ "/ui/cart/" + p.Product.Slug } hx-include="#detail-quantity" hx-target="#cart-count" hx-swap="none" hx-indicator="#ui-loading" hx-disabled-elt="this"><span class="material-symbols-outlined" aria-hidden="true">shopping_bag</span> Add to cart</button><button type="button" class="primary-button" hx-post={ "/ui/cart/" + p.Product.Slug } hx-vals='{"intent":"buy"}' hx-include="#detail-quantity" hx-target="#cart-count" hx-swap="none" hx-indicator="#ui-loading" hx-disabled-elt="this"><span class="material-symbols-outlined" aria-hidden="true">bolt</span> Buy now</button></div>
+          <form class="pincode"><span class="material-symbols-outlined" aria-hidden="true">location_on</span><input placeholder="Enter pincode" aria-label="Pincode" inputmode="numeric" maxlength="6"/><button type="button">Check</button></form>
+          <div class="benefits"><span><span class="material-symbols-outlined" aria-hidden="true">local_shipping</span><b>Estimated delivery</b><small>4 - 6 days</small></span><span><span class="material-symbols-outlined" aria-hidden="true">autorenew</span><b>Easy returns</b><small>Within 7 days</small></span><span><span class="material-symbols-outlined" aria-hidden="true">verified_user</span><b>Secure payments</b><small>100% safe and trusted</small></span><span><span class="material-symbols-outlined" aria-hidden="true">public</span><b>International shipping</b><small>To 50+ countries</small></span></div>
+        </div>
+      </div>
+      <section class="detail-tabs" x-data="{tab:'description'}"><nav role="tablist" aria-label="Product information"><button id="product-tab-description" type="button" role="tab" aria-controls="product-panel-description" :tabindex="tab === 'description' ? 0 : -1" :class="tab === 'description' ? 'active' : ''" :aria-selected="tab === 'description'" @keydown.right.prevent="tab='specs'" @keydown.left.prevent="tab='reviews'" @click="tab='description'">Product description</button><button id="product-tab-specs" type="button" role="tab" aria-controls="product-panel-specs" :tabindex="tab === 'specs' ? 0 : -1" :class="tab === 'specs' ? 'active' : ''" :aria-selected="tab === 'specs'" @keydown.right.prevent="tab='story'" @keydown.left.prevent="tab='description'" @click="tab='specs'">Specifications</button><button id="product-tab-story" type="button" role="tab" aria-controls="product-panel-story" :tabindex="tab === 'story' ? 0 : -1" :class="tab === 'story' ? 'active' : ''" :aria-selected="tab === 'story'" @keydown.right.prevent="tab='reviews'" @keydown.left.prevent="tab='specs'" @click="tab='story'">Maker story</button><button id="product-tab-reviews" type="button" role="tab" aria-controls="product-panel-reviews" :tabindex="tab === 'reviews' ? 0 : -1" :class="tab === 'reviews' ? 'active' : ''" :aria-selected="tab === 'reviews'" @keydown.right.prevent="tab='description'" @keydown.left.prevent="tab='story'" @click="tab='reviews'">Reviews ({ p.Product.Reviews })</button></nav><div id="product-panel-description" role="tabpanel" aria-labelledby="product-tab-description" x-show="tab==='description'"><p>{ productDescription(p.Product) }</p><ul><li>Made in small batches by independent artisans</li><li>Material and care guidance is shown clearly</li><li>Every piece carries the character of its maker</li></ul></div><div id="product-panel-specs" role="tabpanel" aria-labelledby="product-tab-specs" x-show="tab==='specs'" x-cloak><div class="spec-grid"><span>Material <b>{ productFabric(p.Product) }</b></span><span>Color <b>{ productColor(p.Product) }</b></span><span>Technique <b>{ productWeave(p.Product) }</b></span><span>Care <b>{ productCare(p.Product) }</b></span></div></div><div id="product-panel-story" role="tabpanel" aria-labelledby="product-tab-story" x-show="tab==='story'" x-cloak><p>{ productStory(p.Product) }</p></div><div id="product-panel-reviews" role="tabpanel" aria-labelledby="product-tab-reviews" x-show="tab==='reviews'" x-cloak><div class="review-highlight"><strong>{ p.Product.Rating }</strong><span>Verified customer reviews<br/>{ p.Product.Reviews } reviews</span></div><p>Reviews are published after confirmed delivery so each story stays connected to a real purchase.</p></div></section>
+    </section>
+    <section class="container section">@SectionHeading("YOU MAY ALSO LIKE", "More made-for-you finds", "Keep exploring the beautiful things our makers make.")<div class="product-grid product-grid--four">@ProductCards(productSlice(p.Products, 3, 7), true)</div></section>
+    <div class="mobile-buy-bar"><button class="outline-button" type="button" hx-post={ "/ui/cart/" + p.Product.Slug } hx-include="#detail-quantity" hx-target="#cart-count" hx-swap="none" hx-indicator="#ui-loading" hx-disabled-elt="this">Add to cart</button><button class="primary-button" type="button" hx-post={ "/ui/cart/" + p.Product.Slug } hx-vals='{"intent":"buy"}' hx-include="#detail-quantity" hx-target="#cart-count" hx-swap="none" hx-indicator="#ui-loading" hx-disabled-elt="this">Buy now</button></div>
+    <section class="container seller-callout"><img src={ p.Product.ImageURL } alt={ p.Product.Seller } width="520" height="360"/><div><p class="eyebrow">THE MAKER BEHIND THE PIECE</p><h2>Meet { p.Product.Seller }</h2><p>{ productStory(p.Product) }</p><a class="text-link" href={ makerPath(p.Product.Seller) }>Visit the maker store <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a></div></section>
   }
 }
 
-templ SellerStore(p viewmodels.CustomerPage) {
+templ SellerStore(p viewmodels.CustomerPage, seller viewmodels.Seller) {
   @Document(p) {
-    <section class="seller-hero"><img src="/assets/images/customer/maker-mithila.png" alt="Mithila Arts studio"/><div class="container"><p class="eyebrow">A WEEVCRAFTS MAKER</p><h1>Mithila Arts</h1><p>Hand-painted stories from Bihar</p></div></section><section class="container seller-profile"><div class="seller-avatar"><img src="/assets/images/customer/maker-mithila.png" alt="Mithila Arts"/></div><div><h2>Mithila Arts <span class="verified"><span class="material-symbols-outlined">verified</span></span></h2><p>Hand-painted stories from Bihar</p><div class="stars"><span class="material-symbols-outlined">star</span> 4.8 <small>(124 reviews) | Madhubani, Bihar | On WeeVCrafts since 2021</small></div><p class="seller-description">Mithila Arts brings the rich tradition of Madhubani painting to your home. Every piece is hand-painted by rural women artisans from Bihar, keeping centuries-old stories and culture alive.</p></div><div class="seller-actions"><button class="primary-button"><span class="material-symbols-outlined">favorite</span> Follow store</button><button class="outline-button"><span class="material-symbols-outlined">share</span> Share store</button></div></section><section class="container seller-stats"><span><b>120+</b><small>Products</small></span><span><b>4.8 / 5</b><small>Store rating</small></span><span><b>98%</b><small>Happy customers</small></span><span><b>3 years</b><small>On WeeVCrafts</small></span></section><section class="container seller-tabs"><nav><a class="active" href="#products">All products</a><a href="#new">New arrivals</a><a href="#best">Best sellers</a><a href="#about">About the maker</a><a href="#reviews">Reviews</a><a href="#policies">Policies</a></nav><div class="section-head"><div><p class="eyebrow">FROM THE STUDIO</p><h2>Products by Mithila Arts</h2></div><label>Sort by <select><option>Featured</option><option>Newest</option><option>Price</option></select></label></div><div class="product-grid product-grid--five">
-        @ProductCards(p.Products[:5], false)</div></section><section class="container maker-about" id="about"><div><p class="eyebrow">THE MAKER STORY</p><h2>Painted with patience,<br/><em>carrying a whole world.</em></h2><p>Madhubani painting began as a ritual on the walls and floors of homes in Bihar. Today, Mithila Arts keeps those stories moving, one hand-painted panel at a time.</p><a class="text-link" href="#reviews">Read customer stories <span class="material-symbols-outlined">arrow_forward</span></a></div><div class="why-shop"><h3>Why shop from Mithila Arts?</h3><span><span class="material-symbols-outlined">draw</span><b>Made by hand</b><small>Each piece has its own character.</small></span><span><span class="material-symbols-outlined">volunteer_activism</span><b>Fair maker partnership</b><small>Your purchase directly supports the studio.</small></span><span><span class="material-symbols-outlined">package_2</span><b>Carefully packed</b><small>Ready to gift, wherever it is going.</small></span></div></section>
+    <section class="seller-hero"><img src={ seller.ImageURL } alt={ seller.Name + " studio" } width="1254" height="1254"/><div class="container"><p class="eyebrow">A WEEVCRAFTS MAKER</p><h1>{ seller.Name }</h1><p>{ seller.Description }</p></div></section>
+    <section class="container seller-profile"><div class="seller-avatar"><img src={ seller.ImageURL } alt={ seller.Name } width="128" height="128"/></div><div><h2>{ seller.Name } <span class="verified"><span class="material-symbols-outlined" aria-hidden="true">verified</span></span></h2><p>{ seller.Description }</p><div class="stars" aria-label={ seller.Rating + " out of 5 stars" }>@components.RatingStars(seller.Rating) <span>{ seller.Rating } <small>· { seller.Location } · Verified maker</small></span></div><p class="seller-description">{ seller.Description }</p></div><div class="seller-actions"><button class="primary-button" type="button" x-data="{following:false}" :aria-pressed="following" @click="following=!following"><span class="material-symbols-outlined" aria-hidden="true">favorite</span><span x-text="following ? 'Following' : 'Follow store'">Follow store</span></button><button class="outline-button" type="button" x-data="{shared:false}" @click="navigator.clipboard?.writeText(window.location.href); shared=true"><span class="material-symbols-outlined" aria-hidden="true">share</span><span x-text="shared ? 'Link copied' : 'Share store'">Share store</span></button></div></section>
+    <section class="container seller-stats"><span><b>{ seller.Products }+</b><small>Products</small></span><span><b>{ seller.Rating } / 5</b><small>Store rating</small></span><span><b>Verified</b><small>Maker profile</small></span><span><b>India</b><small>Ships worldwide</small></span></section>
+    <section class="container seller-tabs" id="products"><nav aria-label="Maker products"><a class="active" aria-current="page" href="#products">All products</a><a href="#new">New arrivals</a><a href="#best">Best sellers</a><a href="#about">About the maker</a><a href="#reviews">Reviews</a><a href="#policies">Policies</a></nav><div class="section-head"><div><p class="eyebrow">FROM THE STUDIO</p><h2>Products by { seller.Name }</h2></div><label>Sort by <select aria-label="Sort maker products"><option>Featured</option><option>Newest</option><option>Price</option></select></label></div><div class="product-grid product-grid--five">
+        @ProductCards(productSlice(brandProducts(p.Products, seller.Name), 0, 5), false)</div><section id="new" class="seller-tab-anchor"><h2>New arrivals</h2><div class="product-grid product-grid--five">@ProductCards(productSlice(brandProducts(p.Products, seller.Name), 0, 3), false)</div></section><section id="best" class="seller-tab-anchor"><h2>Best sellers</h2><div class="product-grid product-grid--five">@ProductCards(productSlice(brandProducts(p.Products, seller.Name), 2, 5), false)</div></section><section id="reviews" class="seller-tab-anchor"><h2>Customer reviews</h2><p>Customers value the care, material and story behind { seller.Name } pieces.</p><p>Reviews are published after confirmed delivery.</p></section><section id="policies" class="seller-tab-anchor"><h2>Store policies</h2><p>Dispatch times, eligible returns and care guidance are shown clearly before checkout.</p></section></section><section class="container maker-about" id="about"><div><p class="eyebrow">THE MAKER STORY</p><h2>Made with patience,<br/><em>carrying a whole world.</em></h2><p>{ seller.Description }</p><a class="text-link" href="#reviews">Read customer stories <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a></div><div class="why-shop"><h3>Why shop from { seller.Name }?</h3><span><span class="material-symbols-outlined" aria-hidden="true">draw</span><b>Made by hand</b><small>Each piece has its own character.</small></span><span><span class="material-symbols-outlined" aria-hidden="true">volunteer_activism</span><b>Fair maker partnership</b><small>Your purchase directly supports the studio.</small></span><span><span class="material-symbols-outlined" aria-hidden="true">package_2</span><b>Carefully packed</b><small>Ready to gift, wherever it is going.</small></span></div></section>
   }
 }
 
 templ SavedProduct(product viewmodels.Product) {
-  <article class="saved-card"><div class="saved-media"><img src={ product.ImageURL } alt={ product.Name }/><button class="heart" type="button" hx-post={ "/ui/wishlist/" + product.Slug } hx-target="closest article" hx-swap="outerHTML" aria-label="Remove from wishlist"><span class="material-symbols-outlined">favorite</span></button></div><div class="saved-copy"><span class="badge">{ product.Badge }</span><h3><a href={ "/products/" + product.Slug }>{ product.Name }</a></h3><p>By { product.Seller }</p><div class="rating"><span class="material-symbols-outlined">star</span> { product.Rating } ({ product.Reviews })</div><div class="price"><strong>{ product.Price }</strong><del>{ product.CompareAt }</del></div><small class="availability"><span class="material-symbols-outlined">check_circle</span> In stock</small><div><button class="primary-button" hx-post={ "/ui/cart/" + product.Slug } hx-select="#page" hx-target="#page"><span class="material-symbols-outlined">shopping_bag</span> Move to cart</button><button class="text-button" hx-post={ "/ui/wishlist/" + product.Slug } hx-target="closest article" hx-swap="outerHTML">Remove</button></div></div></article>
+  <article class="saved-card">
+    <div class="saved-media"><img src={ product.ImageURL } alt={ product.Name } width="320" height="346" srcset={ product.ImageSrcSet } sizes="(max-width: 720px) 100vw, 320px"/><button class="heart" type="button" hx-post={ "/ui/wishlist/" + product.Slug } hx-vals='{"source":"wishlist"}' hx-target="#wishlist-grid" hx-swap="outerHTML" hx-indicator="#ui-loading" hx-disabled-elt="this" aria-label="Remove from wishlist"><span class="material-symbols-outlined" aria-hidden="true">favorite</span></button></div>
+    <div class="saved-copy"><span class="badge">{ product.Badge }</span><h3><a href={ "/products/" + product.Slug }>{ product.Name }</a></h3><p>By { product.Seller }</p><div class="rating" aria-label={ product.Rating + " out of 5 stars" }>@components.RatingStars(product.Rating) <span>{ product.Rating } ({ product.Reviews })</span></div><div class="price"><strong>{ product.Price }</strong><del>{ product.CompareAt }</del>
+      if product.Discount != "" {
+        <mark>{ product.Discount }</mark>
+      }
+    </div><small class="availability"><span class="material-symbols-outlined" aria-hidden="true">check_circle</span> In stock</small><div><button class="primary-button" type="button" hx-post={ "/ui/cart/" + product.Slug } hx-target="#cart-count" hx-swap="none" hx-indicator="#ui-loading" hx-disabled-elt="this"><span class="material-symbols-outlined" aria-hidden="true">shopping_bag</span> Move to cart</button><button class="text-button" type="button" hx-post={ "/ui/wishlist/" + product.Slug } hx-vals='{"source":"wishlist"}' hx-target="#wishlist-grid" hx-swap="outerHTML" hx-indicator="#ui-loading" hx-disabled-elt="this">Remove</button></div></div>
+  </article>
 }
+
+templ WishlistGrid(p viewmodels.CustomerPage) {
+  <div id="wishlist-grid" class="saved-grid">
+    if len(p.SavedProducts) == 0 {
+      <div class="empty-state"><span class="material-symbols-outlined" aria-hidden="true">favorite_border</span><h2>Your wishlist is empty</h2><p>Save pieces you love and they will appear here.</p><a class="primary-button" href="/products">Discover handmade finds</a></div>
+    } else {
+      @SavedProducts(productSlice(p.SavedProducts, 0, 6))
+    }
+  </div>
+}
+
+templ WishlistGridMutation(p viewmodels.CustomerPage) {
+  @WishlistGrid(p)
+  @components.WishlistCountMutation(p)
+  <div id="ui-toast" hx-swap-oob="innerHTML" role="status">Wishlist updated</div>
+}
+
 
 templ Wishlist(p viewmodels.CustomerPage) {
   @Document(p) {
     <section class="container page-intro wishlist-intro">
-        @Breadcrumb("Home", "My Wishlist")<p class="eyebrow">SAVED WITH LOVE</p><h1>My wishlist</h1><p>Handpicked with love, for a more beautiful tomorrow.</p><p>Your saved treasures from India's finest artisans. Keep them close, move to cart when you are ready.</p></section><section class="container section"><div class="section-head"><div><h2>{ p.WishlistCount } items in your wishlist</h2><p>These are the pieces you chose to keep an eye on.</p></div><a class="outline-button" href="/products">Continue shopping <span class="material-symbols-outlined">arrow_forward</span></a></div><div class="saved-grid">
-        @SavedProducts(p.Products[:6])</div></section><section class="container section wishlist-recommendations">
+        @Breadcrumb("Home", "My Wishlist")<p class="eyebrow">SAVED WITH LOVE</p><h1>My wishlist</h1><p>Handpicked with love, for a more beautiful tomorrow.</p><p>Your saved treasures from India's finest artisans. Keep them close, move to cart when you are ready.</p></section><section class="container section"><div class="section-head"><div><h2>{ p.WishlistCount } items in your wishlist</h2><p>These are the pieces you chose to keep an eye on.</p></div><a class="outline-button" href="/products">Continue shopping <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a></div>@WishlistGrid(p)</section><section class="container section wishlist-recommendations">
         @SectionHeading("KEEP DISCOVERING", "You may also love", "More beautiful finds from independent makers.")<div class="product-grid product-grid--six">
-        @ProductCards(p.Products[6:], true)</div></section>
+        @ProductCards(productSlice(p.Products, 6, len(p.Products)), true)</div></section>
   }
 }
 
@@ -191,83 +550,176 @@ templ AccountSidebar(active string) {
   <aside class="account-sidebar">
     <div class="profile-mini"><div class="avatar">AS</div><b>Ananya Sharma</b><small>ananya.sharma@gmail.com</small></div>
     if active == "account" {
-      <a class="active" href="/account"><span class="material-symbols-outlined">dashboard</span> My account</a>
+      <a class="active" aria-current="page" href="/account"><span class="material-symbols-outlined" aria-hidden="true">dashboard</span> My account</a>
     } else {
-      <a href="/account"><span class="material-symbols-outlined">dashboard</span> My account</a>
+      <a href="/account"><span class="material-symbols-outlined" aria-hidden="true">dashboard</span> My account</a>
     }
-    <a href="/account/profile"><span class="material-symbols-outlined">person</span> Profile</a><a href="/account/addresses"><span class="material-symbols-outlined">location_on</span> Addresses</a>
+    <a href="/account/profile"><span class="material-symbols-outlined" aria-hidden="true">person</span> Profile</a><a href="/account/addresses"><span class="material-symbols-outlined" aria-hidden="true">location_on</span> Addresses</a>
     if active == "orders" {
-      <a class="active" href="/orders"><span class="material-symbols-outlined">inventory_2</span> Orders</a>
+      <a class="active" aria-current="page" href="/orders"><span class="material-symbols-outlined" aria-hidden="true">inventory_2</span> Orders</a>
     } else {
-      <a href="/orders"><span class="material-symbols-outlined">inventory_2</span> Orders</a>
+      <a href="/orders"><span class="material-symbols-outlined" aria-hidden="true">inventory_2</span> Orders</a>
     }
-    <a href="/wishlist"><span class="material-symbols-outlined">favorite</span> Wishlist</a><a href="/account/notifications"><span class="material-symbols-outlined">notifications</span> Notifications</a><a href="/account/privacy"><span class="material-symbols-outlined">lock</span> Privacy</a><a href="/account/security"><span class="material-symbols-outlined">shield</span> Security</a><a href="/contact"><span class="material-symbols-outlined">support_agent</span> Support</a>
+    <a href="/wishlist"><span class="material-symbols-outlined" aria-hidden="true">favorite</span> Wishlist</a><a href="/account/notifications"><span class="material-symbols-outlined" aria-hidden="true">notifications</span> Notifications</a><a href="/account/privacy"><span class="material-symbols-outlined" aria-hidden="true">lock</span> Privacy</a><a href="/account/security"><span class="material-symbols-outlined" aria-hidden="true">shield</span> Security</a><a href="/contact"><span class="material-symbols-outlined" aria-hidden="true">support_agent</span> Support</a>
   </aside>
 }
 
 templ Orders(p viewmodels.CustomerPage) {
   @Document(p) {
     <section class="container page-intro account-intro">
-        @Breadcrumb("Home", "My Account", "My Orders")<p class="eyebrow">YOUR WEEVCRAFTS JOURNEY</p><h1>My orders</h1><p>Track, manage and view your orders from WeeVCrafts.</p><nav class="tabs"><a class="active" href="/orders">All orders (12)</a><a href="#">Active (3)</a><a href="#">Delivered (7)</a><a href="#">Cancelled (2)</a></nav></section><section class="container account-layout">
-        @AccountSidebar("orders")<div class="account-content orders-list"><article class="order-card"><header><div><p class="eyebrow">ORDER PLACED</p><h2>{ p.Orders[0].Number } <mark>{ p.Orders[0].Status }</mark></h2><small>{ p.Orders[0].Date } | { p.Orders[0].Payment }</small></div><div><b>3 items</b><strong>{ p.Orders[0].Total }</strong></div></header><div class="order-progress"><span class="done"><i>1</i><b>Order placed</b><small>26 Apr</small></span><span class="done"><i>2</i><b>Packed</b><small>27 Apr</small></span><span><i>3</i><b>Shipped</b><small>Awaiting update</small></span><span><i>4</i><b>Delivered</b><small>Awaiting update</small></span></div><div class="seller-order"><div class="seller-order-head"><b><span class="material-symbols-outlined">storefront</span> Weaver's Touch</b><span>Delivery expected 30 Apr - 02 May</span></div>
-        @OrderRows(p.Orders[0].Items)</div><footer><a class="primary-button" href="/orders/%23WC2504267819">Track order <span class="material-symbols-outlined">arrow_forward</span></a><button class="outline-button">Cancel order</button><button class="outline-button">Need help?</button></footer></article><h2 class="order-history-title">Past orders</h2>
-        @HistoryRows(p.Orders[1:])</div></section>
+        @Breadcrumb("Home", "My Account", "My Orders")<p class="eyebrow">YOUR WEEVCRAFTS JOURNEY</p><h1>My orders</h1><p>Track, manage and view your orders from WeeVCrafts.</p><nav class="tabs" role="tablist" aria-label="Order status"><a role="tab" class={ orderTabClass(p.Filters, "") } aria-current={ orderTabCurrent(p.Filters, "") } aria-selected={ tabSelected(orderTabClass(p.Filters, "") == "active") } href="/orders">All orders ({ orderCount(p.Orders, "") })</a><a role="tab" class={ orderTabClass(p.Filters, "active") } aria-current={ orderTabCurrent(p.Filters, "active") } aria-selected={ tabSelected(orderTabClass(p.Filters, "active") == "active") } href="/orders?status=active">Active ({ orderCount(p.Orders, "active") })</a><a role="tab" class={ orderTabClass(p.Filters, "delivered") } aria-current={ orderTabCurrent(p.Filters, "delivered") } aria-selected={ tabSelected(orderTabClass(p.Filters, "delivered") == "active") } href="/orders?status=delivered">Delivered ({ orderCount(p.Orders, "delivered") })</a><a role="tab" class={ orderTabClass(p.Filters, "cancelled") } aria-current={ orderTabCurrent(p.Filters, "cancelled") } aria-selected={ tabSelected(orderTabClass(p.Filters, "cancelled") == "active") } href="/orders?status=cancelled">Cancelled ({ orderCount(p.Orders, "cancelled") })</a></nav></section><section class="container account-layout">
+        @AccountSidebar("orders")<div class="account-content orders-list">
+          if len(orderSubset(p.Orders, p.Filters.Get("status"))) == 0 {
+            <div class="empty-state"><span class="material-symbols-outlined" aria-hidden="true">receipt_long</span><h2>No orders in this view</h2><p>Try another order status or explore handmade pieces from independent Indian makers.</p><a class="primary-button" href="/products">Browse products <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a></div>
+          } else {
+            @PrimaryOrder(firstOrder(orderSubset(p.Orders, p.Filters.Get("status"))))
+            <h2 class="order-history-title">Past orders</h2>
+            @HistoryRows(orderSlice(orderSubset(p.Orders, p.Filters.Get("status")), 1))
+          }
+        </div></section>
+  }
+}
+
+templ PrimaryOrder(order viewmodels.Order) {
+  <article class="order-card"><header><div><p class="eyebrow">ORDER PLACED</p><h2>{ order.Number } <mark>{ order.Status }</mark></h2><small>{ order.Date } | { order.Payment }</small></div><div><b>{ len(order.Items) } items</b><strong>{ order.Total }</strong></div></header><div class="order-progress"><span class="done"><i>1</i><b>Order placed</b><small>{ order.Date }</small></span><span class="done"><i>2</i><b>Packed</b><small>Maker update</small></span><span><i>3</i><b>Shipped</b><small>Awaiting update</small></span><span><i>4</i><b>Delivered</b><small>Awaiting update</small></span></div><div class="seller-order"><div class="seller-order-head"><b><span class="material-symbols-outlined" aria-hidden="true">storefront</span> { orderSeller(order) }</b><span>{ orderDeliveryCopy(order) }</span></div>
+  @OrderRows(order.Items)</div><footer><a class="primary-button" href={ orderPath(order.Number) }>Track order <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a><a class="outline-button" href="/returns">Cancel order</a><a class="outline-button" href="/contact">Need help?</a></footer></article>
+}
+
+templ Tracking(p viewmodels.CustomerPage) {
+  @Document(p) {
+    <section class="container page-intro compact-intro">@Breadcrumb("Home", "Track order")<p class="eyebrow">EVERY STEP, KEPT CLEAR</p><h1>Track your order</h1><p>Follow your handmade order from maker dispatch to your doorstep.</p></section>
+    <section class="container tracking-layout"><div class="tracking-main"><form class="tracking-search" action="/tracking" method="get"><label for="tracking-order">Order number</label><div><input id="tracking-order" name="order" value="#WC2504267819"/><button class="primary-button" type="submit">Track order <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></button></div></form><article class="tracking-card-main"><header><div><span class="badge">In transit</span><h2>Order #WC2504267819</h2><p>Chanderi Silk Cotton Saree · Weaver's Touch</p></div><strong>Expected 30 Apr – 02 May</strong></header><div class="tracking-progress" aria-label="Shipment progress"><span class="done"><i class="material-symbols-outlined" aria-hidden="true">check</i><b>Order placed</b><small>26 Apr</small></span><span class="done"><i class="material-symbols-outlined" aria-hidden="true">check</i><b>Packed by maker</b><small>27 Apr</small></span><span class="current"><i class="material-symbols-outlined" aria-hidden="true">local_shipping</i><b>In transit</b><small>28 Apr</small></span><span><i class="material-symbols-outlined" aria-hidden="true">home</i><b>Delivered</b><small>Expected soon</small></span></div><div class="tracking-events"><div><time>28 Apr<br/>10:30 AM</time><span><b>Shipment in transit</b><small>Package reached Bengaluru sorting centre · Delhivery</small></span></div><div><time>27 Apr<br/>04:15 PM</time><span><b>Picked up from Weaver's Touch</b><small>Tracking ID: 149730248756</small></span></div><div><time>26 Apr<br/>05:20 PM</time><span><b>Order packed</b><small>Your maker has prepared the parcel with care.</small></span></div></div></article></div><aside class="summary tracking-aside"><span class="material-symbols-outlined" aria-hidden="true">support_agent</span><h2>Need help?</h2><p>Our support team can help with courier updates, delivery windows and returns.</p><a class="outline-button full" href="/contact">Contact support</a><a class="text-link" href="/orders/WC2504267819">View order details <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a></aside></section>
+  }
+}
+
+templ Payments(p viewmodels.CustomerPage) {
+  @Document(p) {
+    <section class="container page-intro compact-intro">@Breadcrumb("Home", "Account", "Payments")<p class="eyebrow">CLEAR, SECURE, TRACEABLE</p><h1>Payments</h1><p>Review payment methods and reconcile the status of your recent order transactions.</p></section>
+    <section class="container payment-workspace"><div class="payment-main"><article class="payment-method-card"><header><div><span class="material-symbols-outlined" aria-hidden="true">credit_card</span><h2>Saved payment methods</h2></div><a href="/account/addresses?notice=Payment+method+form+opened">Add method</a></header><div class="saved-payment"><span class="payment-logo">VISA</span><div><strong>Card ending in 4586</strong><small>Expires 08/2027 · Default</small></div><a href="/payments?notice=Payment+method+editor+opened">Manage</a></div><div class="saved-payment"><span class="payment-logo upi">UPI</span><div><strong>ananya@upi</strong><small>Verified · Available for checkout</small></div><a href="/payments?notice=UPI+method+editor+opened">Manage</a></div></article><article class="payment-method-card"><header><div><span class="material-symbols-outlined" aria-hidden="true">receipt_long</span><h2>Recent payment activity</h2></div><a href="/payments?notice=Payment+history+export+queued">Export</a></header><div class="payment-activity">@PaymentActivityRows(p.PaymentActivity)</div></article></div><aside class="summary payment-aside"><span class="material-symbols-outlined" aria-hidden="true">verified_user</span><h2>Payment support</h2><p>A pending or failed payment does not create a duplicate order. Keep the reference number ready when contacting support.</p><a class="primary-button full" href="/contact?notice=Payment+support+opened">Get help with a payment</a><a class="text-link" href="/orders">View related orders <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a></aside></section>
+  }
+}
+
+templ PaymentActivityRows(activities []viewmodels.PaymentActivity) {
+  if len(activities) == 0 {
+    <p class="empty-state">No recent payment activity.</p>
+  } else {
+    for _, payment := range activities {
+      <div><span class={ "status-dot " + paymentActivityClass(payment.Status) }></span><p><strong>{ payment.Reference } · { payment.Amount }</strong><small>{ payment.Date } · { payment.Method } · Order { payment.OrderNumber }</small></p><mark class={ "status " + paymentActivityClass(payment.Status) }>{ payment.Status }</mark></div>
+    }
+  }
+}
+
+templ PaymentStatus(p viewmodels.CustomerPage, state string) {
+  @Document(p) {
+    <section class="container page-intro compact-intro">@Breadcrumb("Home", "Payments", paymentStateLabel(state))<p class="eyebrow">PAYMENT RECONCILIATION</p><h1>{ paymentStateTitle(state) }</h1><p>{ paymentStateDescription(state) }</p></section>
+    <section class="container payment-state-layout"><article class={ "payment-state-card state-" + state }><span class="payment-state-icon material-symbols-outlined" aria-hidden="true">{ paymentStateIcon(state) }</span><h2>{ paymentStateHeading(state) }</h2><p>{ paymentStateCopy(state) }</p><dl><div><dt>Payment reference</dt><dd>{ paymentStateReference(state) }</dd></div><div><dt>Related order</dt><dd>#WC2504267819</dd></div><div><dt>Next step</dt><dd>{ paymentStateNextStep(state) }</dd></div></dl><div class="payment-state-actions"><a class="primary-button" href="/orders">View related order</a><a class="outline-button" href="/payments">Back to payments</a></div></article><aside class="summary"><span class="material-symbols-outlined" aria-hidden="true">support_agent</span><h2>Need help?</h2><p>Keep the payment reference ready. Our support team can check reconciliation without creating a duplicate order.</p><a class="outline-button full" href="/contact?notice=Payment+reconciliation+support+opened">Contact payment support</a></aside></section>
   }
 }
 
 templ Returns(p viewmodels.CustomerPage) {
   @Document(p) {
     <section class="container page-intro returns-intro">
-        @Breadcrumb("Home", "My Account", "Returns and Refunds")<p class="eyebrow">WE HAVE GOT YOU</p><h1>Returns &amp; refunds</h1><p>We want you to love what you bring home. If something is not right, we are here to make it easy.</p></section><section class="container returns-layout"><div class="returns-main"><nav class="tabs"><a class="active" href="/returns">Active returns (2)</a><a href="#">Refunds (1)</a><a href="#">Closed requests (1)</a></nav><article class="return-card"><header><div><mark>{ p.Returns[0].Status }</mark><h2>Return request { p.Returns[0].ID }</h2></div><small>Requested { p.Returns[0].Requested }</small></header><div class="return-main"><img src={ p.Returns[0].ImageURL } alt={ p.Returns[0].ProductName }/><div><h2>{ p.Returns[0].ProductName }</h2><p>Order <b>{ p.Returns[0].OrderNumber }</b><br/>Sold by Weaver's Touch</p><strong>{ p.Returns[0].Amount }</strong></div><dl><dt>Return reason</dt><dd>{ p.Returns[0].Reason }</dd><dt>Pickup address</dt><dd>HSR Layout,<br/>Bengaluru, Karnataka</dd></dl></div><div class="return-status"><div><h3>Current status</h3><mark>Pickup scheduled</mark></div><p>Our logistics partner will pick up your item soon.</p><div class="status-box"><span class="material-symbols-outlined">local_shipping</span> Pickup scheduled for <b>15 Nov 2024, 10 AM - 6 PM</b></div></div><div class="return-progress"><span class="done"><i>1</i><b>Return requested</b></span><span class="done"><i>2</i><b>Seller reviewed</b></span><span class="done"><i>3</i><b>Pickup scheduled</b></span><span><i>4</i><b>Item received</b></span><span><i>5</i><b>Refund initiated</b></span><span><i>6</i><b>Refunded</b></span></div><footer><button class="outline-button">Download return label</button><button class="outline-button">Cancel return</button><a class="text-link" href="#support">Need help?</a></footer></article><article class="return-card compact-return"><header><div><mark>Under review</mark><h2>{ p.Returns[1].ProductName }</h2></div><strong>{ p.Returns[1].Amount }</strong></header><p>Request { p.Returns[1].ID } | { p.Returns[1].Reason }</p><a class="text-link" href="#">View request <span class="material-symbols-outlined">arrow_forward</span></a></article><article class="return-card compact-return"><header><div><mark class="success-mark">Refund completed</mark><h2>{ p.Returns[2].ProductName }</h2></div><strong>{ p.Returns[2].Amount }</strong></header><p>Refund sent to original payment method on 08 Nov 2024.</p><a class="text-link" href="#">View refund details <span class="material-symbols-outlined">arrow_forward</span></a></article></div><aside class="returns-aside"><div><span class="material-symbols-outlined">autorenew</span><h2>7-day return window</h2><p>You can request a return within 7 days of delivery.</p><a href="#">View return policy <span class="material-symbols-outlined">arrow_forward</span></a></div><div id="support"><span class="material-symbols-outlined">support_agent</span><h2>Need help?</h2><p>Our support team is here for you, Monday to Saturday.</p><a href="#">Chat with us <span class="material-symbols-outlined">arrow_forward</span></a></div></aside></section>
+        @Breadcrumb("Home", "My Account", "Returns and Refunds")<p class="eyebrow">WE HAVE GOT YOU</p><h1>Returns &amp; refunds</h1><p>We want you to love what you bring home. If something is not right, we are here to make it easy.</p></section><section class="container returns-layout"><div class="returns-main"><nav class="tabs" role="tablist" aria-label="Return status"><a class={ returnTabClass(p.Filters, "") } role="tab" aria-current={ returnTabCurrent(p.Filters, "") } aria-selected={ tabSelected(returnTabClass(p.Filters, "") == "active") } href="/returns">Active returns ({ returnCount(p.Returns, "") })</a><a class={ returnTabClass(p.Filters, "refunds") } role="tab" aria-current={ returnTabCurrent(p.Filters, "refunds") } aria-selected={ tabSelected(returnTabClass(p.Filters, "refunds") == "active") } href="/returns?tab=refunds">Refunds ({ returnCount(p.Returns, "refunds") })</a><a class={ returnTabClass(p.Filters, "closed") } role="tab" aria-current={ returnTabCurrent(p.Filters, "closed") } aria-selected={ tabSelected(returnTabClass(p.Filters, "closed") == "active") } href="/returns?tab=closed">Closed requests ({ returnCount(p.Returns, "closed") })</a></nav><article class="return-card"><header><div><mark>{ firstReturn(p.Returns).Status }</mark><h2>Return request { firstReturn(p.Returns).ID }</h2></div><small>Requested { firstReturn(p.Returns).Requested }</small></header><div class="return-main"><img width="1254" height="1254" src={ firstReturn(p.Returns).ImageURL } alt={ firstReturn(p.Returns).ProductName }/><div><h2>{ firstReturn(p.Returns).ProductName }</h2><p>Order <b>{ firstReturn(p.Returns).OrderNumber }</b><br/>Sold by Weaver's Touch</p><strong>{ firstReturn(p.Returns).Amount }</strong></div><dl><dt>Return reason</dt><dd>{ firstReturn(p.Returns).Reason }</dd><dt>Pickup address</dt><dd>HSR Layout,<br/>Bengaluru, Karnataka</dd></dl></div><div class="return-status"><div><h3>Current status</h3><mark>Pickup scheduled</mark></div><p>Our logistics partner will pick up your item soon.</p><div class="status-box"><span class="material-symbols-outlined" aria-hidden="true">local_shipping</span> Pickup scheduled for <b>15 Nov 2024, 10 AM - 6 PM</b></div></div><div class="return-progress"><span class="done"><i>1</i><b>Return requested</b></span><span class="done"><i>2</i><b>Seller reviewed</b></span><span class="done"><i>3</i><b>Pickup scheduled</b></span><span><i>4</i><b>Item received</b></span><span><i>5</i><b>Refund initiated</b></span><span><i>6</i><b>Refunded</b></span></div><footer><a class="outline-button" href="/returns/RET123456/label">Download return label</a><a class="outline-button" href="/returns?notice=Return+cancel+requested">Cancel return</a><a class="text-link" href="/contact">Need help?</a></footer></article><article class="return-card compact-return"><header><div><mark>Under review</mark><h2>{ returnAt(p.Returns, 1).ProductName }</h2></div><strong>{ returnAt(p.Returns, 1).Amount }</strong></header><p>Request { returnAt(p.Returns, 1).ID } | { returnAt(p.Returns, 1).Reason }</p><a class="text-link" href={ "/returns?request=" + returnAt(p.Returns, 1).ID }>View request <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a></article><article class="return-card compact-return"><header><div><mark class="success-mark">Refund completed</mark><h2>{ returnAt(p.Returns, 2).ProductName }</h2></div><strong>{ returnAt(p.Returns, 2).Amount }</strong></header><p>Refund sent to original payment method on 08 Nov 2024.</p><a class="text-link" href={ "/returns?request=" + returnAt(p.Returns, 2).ID }>View refund details <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a></article></div><aside class="returns-aside"><div><span class="material-symbols-outlined" aria-hidden="true">autorenew</span><h2>7-day return window</h2><p>You can request a return within 7 days of delivery.</p><a href="/shipping">View return policy <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a></div><div id="support"><span class="material-symbols-outlined" aria-hidden="true">support_agent</span><h2>Need help?</h2><p>Our support team is here for you, Monday to Saturday.</p><a href="/contact">Chat with us <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a></div></aside></section>
   }
+}
+
+templ ReturnsFiltered(p viewmodels.CustomerPage, tab string) {
+  @Document(p) {
+    <section class="container page-intro returns-intro">
+      @Breadcrumb("Home", "My Account", "Returns and Refunds")<p class="eyebrow">WE HAVE GOT YOU</p><h1>Returns &amp; refunds</h1><p>We want you to love what you bring home. If something is not right, we are here to make it easy.</p>
+    </section>
+    <section class="container returns-layout">
+      <div class="returns-main">
+        <nav class="tabs" role="tablist" aria-label="Return status"><a class={ returnTabClass(p.Filters, "") } role="tab" aria-current={ returnTabCurrent(p.Filters, "") } aria-selected={ tabSelected(returnTabClass(p.Filters, "") == "active") } href="/returns">Active returns ({ returnCount(p.Returns, "") })</a><a class={ returnTabClass(p.Filters, "refunds") } role="tab" aria-current={ returnTabCurrent(p.Filters, "refunds") } aria-selected={ tabSelected(returnTabClass(p.Filters, "refunds") == "active") } href="/returns?tab=refunds">Refunds ({ returnCount(p.Returns, "refunds") })</a><a class={ returnTabClass(p.Filters, "closed") } role="tab" aria-current={ returnTabCurrent(p.Filters, "closed") } aria-selected={ tabSelected(returnTabClass(p.Filters, "closed") == "active") } href="/returns?tab=closed">Closed requests ({ returnCount(p.Returns, "closed") })</a></nav>
+        if len(returnSubset(p.Returns, tab)) == 0 {
+          <div class="empty-state"><span class="material-symbols-outlined" aria-hidden="true">assignment_return</span><h2>No returns in this view</h2><p>There are no { tab } requests to show right now. Your return history will appear here when it changes.</p><a class="primary-button" href="/products">Continue shopping <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a></div>
+        } else {
+          for _, item := range returnSubset(p.Returns, tab) {
+            @ReturnCompact(item)
+          }
+        }
+      </div>
+      <aside class="returns-aside"><div><span class="material-symbols-outlined" aria-hidden="true">autorenew</span><h2>7-day return window</h2><p>You can request a return within 7 days of delivery.</p><a href="/shipping">View return policy <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a></div><div id="support"><span class="material-symbols-outlined" aria-hidden="true">support_agent</span><h2>Need help?</h2><p>Our support team is here for you, Monday to Saturday.</p><a href="/contact">Chat with us <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a></div></aside>
+    </section>
+  }
+}
+
+templ ReturnCompact(item viewmodels.Return) {
+  <article class="return-card compact-return"><header><div><mark>{ item.Status }</mark><h2>{ item.ProductName }</h2></div><strong>{ item.Amount }</strong></header><p>Request { item.ID } | { item.Reason }</p><a class="text-link" href={ "/returns?request=" + item.ID }>{ returnActionLabel(item.Status) } <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a></article>
 }
 
 templ Account(p viewmodels.CustomerPage) {
   @Document(p) {
-    <section class="account-welcome"><div class="container"><p class="eyebrow">YOUR WEEVCRAFTS HOME</p><h1>Welcome back,<br/><em>Ananya!</em></h1><p>Glad to have you here. Together, we support artisans and keep traditions alive.</p></div><img src="/assets/images/customer/maker-mithila.png" alt="Artisan at work"/></section><section class="container account-layout">
-        @AccountSidebar("account")<div class="account-content"><div class="account-stats"><span><span class="material-symbols-outlined">inventory_2</span><b>12</b><small>Orders placed</small></span><span><span class="material-symbols-outlined">favorite</span><b>8</b><small>Items in wishlist</small></span><span><span class="material-symbols-outlined">reviews</span><b>4</b><small>Reviews written</small></span><span><span class="material-symbols-outlined">volunteer_activism</span><b>Proud supporter</b><small>Indian artisans</small></span></div><div class="account-cards"><section id="profile"><h2>Profile information</h2><a href="#">Edit <span class="material-symbols-outlined">edit</span></a><p><b>Ananya Sharma</b><br/>ananya.sharma@gmail.com<br/>+91 98765 43210<br/><small>Member since 12 Mar 2023</small></p></section><section id="addresses"><h2>Saved addresses</h2><a href="#">Manage <span class="material-symbols-outlined">arrow_forward</span></a><p><b>Home <mark>Default</mark></b><br/>A-203, Green View Apartments<br/>Koramangala, Bengaluru<br/>Karnataka 560034</p></section><section><h2>Recent orders</h2><a href="/orders">View all <span class="material-symbols-outlined">arrow_forward</span></a><div class="mini-item"><img src={ p.Products[2].ImageURL } alt=""/><span>Chanderi Silk Cotton Saree<small>Order #WC789456</small><b>{ p.Products[2].Price }</b></span></div></section><section><h2>Returns &amp; refunds</h2><a href="/returns">View all <span class="material-symbols-outlined">arrow_forward</span></a><div class="mini-item"><img src={ p.Products[4].ImageURL } alt=""/><span>Handpainted Ceramic Mugs<small>Return requested</small><b>View status</b></span></div></section><section id="payments"><h2>Payment methods</h2><a href="#">Manage <span class="material-symbols-outlined">arrow_forward</span></a><p>Card ending in 4586 <mark>Default</mark><br/><small>Expires 08/2027</small></p></section><section id="preferences"><h2>Notification preferences</h2><a href="#">Manage <span class="material-symbols-outlined">arrow_forward</span></a><p>Order updates <b class="green">On</b><br/>Offers &amp; promotions <b class="green">On</b><br/>New arrivals <b class="green">On</b></p></section><section id="privacy"><h2>Privacy preferences</h2><a href="#">Manage <span class="material-symbols-outlined">arrow_forward</span></a><p>Personal data<br/>Communications<br/>Data &amp; privacy</p></section><section id="security"><h2>Security &amp; sessions</h2><a href="#">Manage <span class="material-symbols-outlined">arrow_forward</span></a><p>Password<br/>Two-factor authentication<br/>Active sessions</p></section><section class="account-wide"><h2>Reviews &amp; maker love</h2><p>You have helped independent makers grow. Leave a note on your recent purchases and make their day.</p><a class="text-link" href="/wishlist">Review your saved pieces <span class="material-symbols-outlined">arrow_forward</span></a></section><section class="account-wide account-help"><span class="material-symbols-outlined">support_agent</span><div><h2>Need a hand?</h2><p>Our customer care team is here for order, return and product questions.</p></div><a class="outline-button" href="#">Contact support</a></section></div></div></section>
+    <section class="account-welcome"><div class="container"><p class="eyebrow">YOUR WEEVCRAFTS HOME</p><h1>Welcome back,<br/><em>Ananya!</em></h1><p>Glad to have you here. Together, we support artisans and keep traditions alive.</p></div><img src="/assets/images/customer/maker-mithila.webp" alt="Artisan at work" width="1254" height="1254"/></section><section class="container account-layout">
+        @AccountSidebar("account")<div class="account-content"><div class="account-stats"><span><span class="material-symbols-outlined" aria-hidden="true">inventory_2</span><b>12</b><small>Orders placed</small></span><span><span class="material-symbols-outlined" aria-hidden="true">favorite</span><b>8</b><small>Items in wishlist</small></span><span><span class="material-symbols-outlined" aria-hidden="true">reviews</span><b>4</b><small>Reviews written</small></span><span><span class="material-symbols-outlined" aria-hidden="true">volunteer_activism</span><b>Proud supporter</b><small>Indian artisans</small></span></div><div class="account-cards"><section id="profile"><h2>Profile information</h2><a href="/account/profile">Edit <span class="material-symbols-outlined" aria-hidden="true">edit</span></a><p><b>Ananya Sharma</b><br/>ananya.sharma@gmail.com<br/>+91 98765 43210<br/><small>Member since 12 Mar 2023</small></p></section><section id="addresses"><h2>Saved addresses</h2><a href="/account/addresses">Manage <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a><p><b>Home <mark>Default</mark></b><br/>A-203, Green View Apartments<br/>Koramangala, Bengaluru<br/>Karnataka 560034</p></section><section><h2>Recent orders</h2><a href="/orders">View all <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a><div class="mini-item"><img width="1254" height="1254" src={ productAt(p.Products, 2).ImageURL } alt={ productAt(p.Products, 2).Name }/><span>{ productAt(p.Products, 2).Name }<small>Order #WC789456</small><b>{ productAt(p.Products, 2).Price }</b></span></div></section><section><h2>Returns &amp; refunds</h2><a href="/returns">View all <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a><div class="mini-item"><img width="1254" height="1254" src={ productAt(p.Products, 4).ImageURL } alt={ productAt(p.Products, 4).Name }/><span>{ productAt(p.Products, 4).Name }<small>Return requested</small><b>View status</b></span></div></section><section id="payments"><h2>Payment methods</h2><a href="/payments">Manage <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a><p>Card ending in 4586 <mark>Default</mark><br/><small>Expires 08/2027</small></p></section><section id="preferences"><h2>Notification preferences</h2><a href="/account/notifications">Manage <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a><p>Order updates <b class="green">On</b><br/>Offers &amp; promotions <b class="green">On</b><br/>New arrivals <b class="green">On</b></p></section><section id="privacy"><h2>Privacy preferences</h2><a href="/account/privacy">Manage <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a><p>Personal data<br/>Communications<br/>Data &amp; privacy</p></section><section id="security"><h2>Security &amp; sessions</h2><a href="/account/security">Manage <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a><p>Password<br/>Two-factor authentication<br/>Active sessions</p></section><section class="account-wide"><h2>Reviews &amp; maker love</h2><p>You have helped independent makers grow. Leave a note on your recent purchases and make their day.</p><a class="text-link" href="/account/reviews">Review your saved pieces <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a></section><section class="account-wide account-help"><span class="material-symbols-outlined" aria-hidden="true">support_agent</span><div><h2>Need a hand?</h2><p>Our customer care team is here for order, return and product questions.</p></div><a class="outline-button" href="/contact">Contact support</a></section></div></div></section>
   }
 }
 
 templ OrderDetail(p viewmodels.CustomerPage) {
   @Document(p) {
     <section class="container page-intro compact-intro">
-      @Breadcrumb("Home", "My Account", "My Orders", "Order details")
+      <nav class="breadcrumb" aria-label="Breadcrumb"><a href="/">Home</a><span aria-hidden="true">/</span><a href="/account">My Account</a><span aria-hidden="true">/</span><a href="/orders">My Orders</a><span aria-hidden="true">/</span><span aria-current="page">Order details</span></nav>
       <p class="eyebrow">ORDER DETAILS</p>
-      <h1>Order #WC2504267819</h1>
-      <p>Placed on 26 Apr 2024, 10:24 AM</p>
+      <h1>{ p.SelectedOrder.Number }</h1>
+      <p>Placed on { p.SelectedOrder.Date }</p>
     </section>
     <section class="container order-detail-layout">
       <div class="order-detail-main">
-        <div class="order-detail-status"><mark>Processing</mark><h2>Your order is being prepared with care.</h2><p>We will notify you as soon as it ships.</p></div>
-        @OrderDetailRows(p.Orders[0].Items)
+        <div class="order-detail-status"><mark>{ p.SelectedOrder.Status }</mark><h2>{ orderStatusTitle(p.SelectedOrder) }</h2><p>{ orderStatusCopy(p.SelectedOrder) }</p></div>
+        @OrderDetailRows(p.SelectedOrder.Items)
       </div>
-      <aside class="summary"><h2>Order summary</h2><p>Items ({ p.CartCount }) <b>INR 14,797</b></p><p>Shipping <b>INR 0</b></p><hr/><h3>Total amount <strong>INR 14,797</strong></h3><button class="outline-button full">View invoice</button><button class="outline-button full">Need help?</button></aside>
+      <aside class="summary"><h2>Order summary</h2><p>Items ({ len(p.SelectedOrder.Items) }) <b>{ p.SelectedOrder.Total }</b></p><p>Shipping <b>Included</b></p><hr/><h3>Total amount <strong>{ p.SelectedOrder.Total }</strong></h3><a class="outline-button full" href="/orders/invoice">View invoice</a><a class="outline-button full" href="/contact">Need help?</a></aside>
     </section>
   }
 }
 
 templ Empty(p viewmodels.CustomerPage) {
   @Document(p) {
-    <section class="container empty-page"><span class="material-symbols-outlined">favorite</span><h1>{ p.Title }</h1><p>{ p.Notice }</p><a class="primary-button" href="/products">Browse products <span class="material-symbols-outlined">arrow_forward</span></a></section>
+    <section class="container empty-page"><span class="material-symbols-outlined" aria-hidden="true">favorite</span><h1>{ p.Title }</h1><p>{ p.Notice }</p><a class="primary-button" href="/products">Browse products <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a></section>
   }
 }
 
 templ Cart(p viewmodels.CustomerPage) {
   @Document(p) {
-    <section class="container page-intro compact-intro">
-        @Breadcrumb("Home", "Your Cart")<p class="eyebrow">ALMOST YOURS</p><h1>Your cart</h1><p>{ p.CartCount } items from independent Indian makers</p></section><section class="container cart-layout"><div class="cart-items">
-        @CartRows(p.Cart)</div><aside class="summary cart-summary"><h2>Order summary</h2><p>Items ({ p.CartCount }) <b>INR 10,397</b></p><p>Delivery charges <b>INR 100</b></p><p class="discount">You saved <b>INR 2,100</b></p><hr/><h3>Total amount <strong>INR 10,497</strong></h3><form class="coupon"><input placeholder="Have a coupon?" aria-label="Coupon code"/><button type="button">Apply</button></form><a class="primary-button full" href="/checkout">Proceed to checkout <span class="material-symbols-outlined">arrow_forward</span></a><small class="secure-note"><span class="material-symbols-outlined">lock</span> Safe and secure checkout</small></aside></section><section class="container section">
-        @SectionHeading("BEAUTIFUL EXTRAS", "You might also like", "Complete your cart with something made with care.")<div class="product-grid product-grid--four">
-        @ProductCards(p.Products[6:10], true)</div></section>
+    @CartContent(p)
   }
+}
+
+templ CartContent(p viewmodels.CustomerPage) {
+  <section class="container page-intro compact-intro">
+    @Breadcrumb("Home", "Your Cart")<p class="eyebrow">ALMOST YOURS</p><h1>Your cart</h1><p>{ p.CartCount } items from independent Indian makers</p>
+  </section>
+  <section id="cart-layout" class="container cart-layout"><div class="cart-items">
+    @CartRows(p.Cart)</div><aside class="summary cart-summary"><h2>Order summary</h2><p>Items ({ p.CartCount }) <b>{ p.ItemsTotal }</b></p><p>Delivery charges <b>{ p.ShippingTotal }</b></p><p class="discount">You saved <b>{ p.DiscountTotal }</b></p><hr/><h3>Total amount <strong>{ p.Total }</strong></h3><form class="coupon" action="/cart" method="get"><label class="sr-only" for="cart-coupon">Coupon code</label><input id="cart-coupon" name="coupon" placeholder="Have a coupon?"/><button type="submit">Apply</button></form><a class="primary-button full" href="/checkout">Proceed to checkout <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a><small class="secure-note"><span class="material-symbols-outlined" aria-hidden="true">lock</span> Safe and secure checkout</small></aside></section><section class="container section">
+    @SectionHeading("BEAUTIFUL EXTRAS", "You might also like", "Complete your cart with something made with care.")<div class="product-grid product-grid--four">
+    @ProductCards(productSlice(p.Products, 6, 10), true)</div></section>
+}
+
+templ CartUpdate(p viewmodels.CustomerPage) {
+  @components.CartMutationMessage(p, "Cart updated")
+  @CartContent(p)
 }
 
 templ Checkout(p viewmodels.CustomerPage) {
   @Document(p) {
     <section class="container page-intro checkout-intro">
-        @Breadcrumb("Home", "Checkout")<p class="eyebrow">A SIMPLE, SECURE CHECKOUT</p><h1>Checkout</h1><p>One step closer to bringing home something beautiful.</p><div class="steps"><span class="active"><i>1</i><b>Address</b></span><i></i><span class="active"><i>2</i><b>Delivery</b></span><i></i><span><i>3</i><b>Payment</b></span><i></i><span><i>4</i><b>Review</b></span></div></section><section class="container checkout-layout"><div class="checkout-main"><section class="checkout-card"><header><h2><span>1</span> Delivery address</h2><a href="#">Add new</a></header><div class="address selected"><b><span class="material-symbols-outlined">check_circle</span> Priya Sharma <mark>Default</mark></b><p>#102, Green View Apartments<br/>Koramangala, Bengaluru - 560034<br/><small>+91 98765 43210</small></p><a href="#">Edit</a></div><div class="address"><b><span class="material-symbols-outlined">radio_button_unchecked</span> Office</b><p>WeeVCrafts Studio, Indiranagar<br/>Bengaluru - 560038</p><a href="#">Select</a></div></section><section class="checkout-card"><header><h2><span>2</span> Delivery &amp; order details</h2><span class="muted">3 items from 3 sellers</span></header>
-        @CheckoutItems(p.Cart)</section><section class="checkout-card"><header><h2><span>3</span> Payment method</h2><span class="muted">100% secure</span></header><nav class="payment-methods"><button class="active"><span class="material-symbols-outlined">account_balance</span> UPI</button><button><span class="material-symbols-outlined">credit_card</span> Credit / debit card</button><button><span class="material-symbols-outlined">account_balance_wallet</span> Netbanking</button><button><span class="material-symbols-outlined">payments</span> Cash on delivery</button></nav><label class="field-label" for="upi">Enter UPI ID</label><input id="upi" class="wide-input" placeholder="name@upi"/><button class="primary-button full" hx-post="/ui/checkout" hx-target="#page">Continue to review <span class="material-symbols-outlined">arrow_forward</span></button></section></div><aside class="summary checkout-summary"><h2>Order summary ({ p.CartCount } items)</h2><div class="summary-items">
-        @CheckoutSummaryItems(p.Cart)</div><p>Subtotal <b>INR 9,797</b></p><p>Shipping <b>INR 198</b></p><p class="discount">Discount <b>- INR 0</b></p><hr/><h3>Total payable <strong>INR 9,995</strong></h3><form class="coupon"><input placeholder="Coupon code"/><button type="button">Apply</button></form><button class="primary-button full" hx-post="/ui/checkout" hx-target="#page">Place order <span class="material-symbols-outlined">arrow_forward</span></button><small>Preview only. No payment will be attempted.</small></aside></section>
+      @Breadcrumb("Home", "Checkout")
+      <p class="eyebrow">A SIMPLE, SECURE CHECKOUT</p><h1>Checkout</h1><p>One step closer to bringing home something beautiful.</p>
+      <div class="steps" role="list" aria-label="Checkout progress"><span :class="checkoutStep >= 1 ? 'active' : ''" role="listitem"><i>1</i><b>Address</b></span><i></i><span :class="checkoutStep >= 2 ? 'active' : ''" role="listitem"><i>2</i><b>Delivery</b></span><i></i><span :class="checkoutStep >= 3 ? 'active' : ''" role="listitem"><i>3</i><b>Payment</b></span><i></i><span :class="checkoutStep >= 4 ? 'active' : ''" role="listitem"><i>4</i><b>Review</b></span></div>
+    </section>
+    <section class="container checkout-layout">
+      <div class="checkout-main">
+        <section class="checkout-card" x-show="checkoutStep === 1"><header><h2><span>1</span> Delivery address</h2><a href="/account/addresses">Add new</a></header><div class="address selected"><b><span class="material-symbols-outlined" aria-hidden="true">check_circle</span> Priya Sharma <mark>Default</mark></b><p>#102, Green View Apartments<br/>Koramangala, Bengaluru - 560034<br/><small>+91 98765 43210</small></p><a href="/account/addresses">Edit</a></div><div class="address"><b><span class="material-symbols-outlined" aria-hidden="true">radio_button_unchecked</span> Office</b><p>WeeVCrafts Studio, Indiranagar<br/>Bengaluru - 560038</p><a href="/account/addresses?address=office">Select</a></div><button class="primary-button full" type="button" @click="checkoutStep=2">Continue to delivery <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></button></section>
+        <section class="checkout-card" x-show="checkoutStep === 2"><header><h2><span>2</span> Delivery &amp; order details</h2><span class="muted">{ p.CartCount } items from { len(p.Cart) } sellers</span></header>
+        @CheckoutItems(p.Cart)<button class="primary-button full" type="button" @click="checkoutStep=3">Continue to payment <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></button></section>
+        <section class="checkout-card" x-show="checkoutStep === 3"><header><h2><span>3</span> Payment method</h2><span class="muted">100% secure</span></header><nav class="payment-methods" role="tablist" aria-label="Payment method"><button type="button" role="tab" :class="payment === 'upi' ? 'active' : ''" :aria-selected="payment === 'upi'" @click="payment='upi'"><span class="material-symbols-outlined" aria-hidden="true">account_balance</span> UPI</button><button type="button" role="tab" :class="payment === 'card' ? 'active' : ''" :aria-selected="payment === 'card'" @click="payment='card'"><span class="material-symbols-outlined" aria-hidden="true">credit_card</span> Credit / debit card</button><button type="button" role="tab" :class="payment === 'netbanking' ? 'active' : ''" :aria-selected="payment === 'netbanking'" @click="payment='netbanking'"><span class="material-symbols-outlined" aria-hidden="true">account_balance_wallet</span> Netbanking</button><button type="button" role="tab" :class="payment === 'cod' ? 'active' : ''" :aria-selected="payment === 'cod'" @click="payment='cod'"><span class="material-symbols-outlined" aria-hidden="true">payments</span> Cash on delivery</button></nav><div x-show="payment === 'upi'"><label class="field-label" for="upi">Enter UPI ID</label><input id="upi" class="wide-input" placeholder="name@upi"/></div><p x-show="payment === 'card'" x-cloak class="muted">Card details will be collected securely at payment time.</p><p x-show="payment === 'netbanking'" x-cloak class="muted">Choose your bank securely at payment time.</p><p x-show="payment === 'cod'" x-cloak class="muted">Cash on delivery is available for eligible addresses.</p><button class="primary-button full" type="button" @click="checkoutStep=4">Continue to review <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></button></section>
+        <section class="checkout-card" x-show="checkoutStep === 4"><header><h2><span>4</span> Review &amp; place order</h2><span class="muted">Check everything before submitting</span></header><div class="checkout-review"><p><strong>Deliver to</strong><span>Priya Sharma · Koramangala, Bengaluru</span></p><p><strong>Payment</strong><span x-text="payment === 'upi' ? 'UPI' : payment === 'card' ? 'Credit / debit card' : payment === 'netbanking' ? 'Netbanking' : 'Cash on delivery'">UPI</span></p><p><strong>Total payable</strong><span>{ p.Total }</span></p></div><button class="primary-button full" type="button" hx-post="/ui/checkout" hx-target="#page" hx-indicator="#ui-loading" hx-disabled-elt="this">Place order <span class="material-symbols-outlined" aria-hidden="true">check</span></button></section>
+      </div>
+      <aside class="summary checkout-summary"><h2>Order summary ({ p.CartCount } items)</h2><div class="summary-items">@CheckoutSummaryItems(p.Cart)</div><p>Subtotal <b>{ p.ItemsTotal }</b></p><p>Shipping <b>{ p.ShippingTotal }</b></p><p class="discount">Discount <b>- { p.DiscountTotal }</b></p><hr/><h3>Total payable <strong>{ p.Total }</strong></h3><form class="coupon" action="/checkout" method="get"><label class="sr-only" for="checkout-coupon">Coupon code</label><input id="checkout-coupon" name="coupon" placeholder="Coupon code"/><button type="submit">Apply</button></form><button class="primary-button full" type="button" @click="checkoutStep=4">Review &amp; place order <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></button><small>Preview only. No payment will be attempted.</small></aside>
+    </section>
   }
+}
+
+templ CheckoutComplete(p viewmodels.CustomerPage) {
+  <section class="container checkout-complete" role="status"><span class="material-symbols-outlined" aria-hidden="true">check_circle</span><h1>Preview order placed</h1><p>This is a UI-only order preview. No payment or shipping request was sent.</p><a class="primary-button" href="/orders">View your orders <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a></section>
 }

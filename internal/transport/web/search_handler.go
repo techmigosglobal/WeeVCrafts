@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 
 	"github.com/wecratfs/commerce/internal/identity"
 )
@@ -35,6 +36,29 @@ func (h *Handler) search(w http.ResponseWriter, r *http.Request) {
 		data.CSRFToken = h.ensureCSRFCookie(w, r)
 	}
 	h.render(w, http.StatusOK, "search", data)
+}
+
+func (h *Handler) searchSuggestions(w http.ResponseWriter, r *http.Request) {
+	if h.searchService == nil {
+		h.render(w, http.StatusNotFound, "search-suggestions", pageData{})
+		return
+	}
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	query := strings.TrimSpace(r.URL.Query().Get("q"))
+	data := pageData{}
+	if len([]rune(query)) >= 2 {
+		data.SearchQuery = query
+		products, _, _, err := h.searchService.SearchWithOptionsAndFacets(r.Context(), query, "", "", 6, 0)
+		if err != nil {
+			h.render(w, http.StatusServiceUnavailable, "search-suggestions", pageData{SearchQuery: query, Notice: "Suggestions are temporarily unavailable."})
+			return
+		}
+		data.Products = products
+	}
+	h.render(w, http.StatusOK, "search-suggestions", data)
 }
 
 func searchURL(query, category, sort string, page int) string {

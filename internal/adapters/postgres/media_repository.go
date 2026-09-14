@@ -76,7 +76,7 @@ func (r *MediaRepository) FinalizeMedia(ctx context.Context, sellerOwnerID, medi
 		if _, err := tx.Exec(transactionContext, `UPDATE products SET image_url = $1, updated_at = NOW() WHERE id = $2`, publicPath, record.ProductID); err != nil {
 			return err
 		}
-		_, err = tx.Exec(transactionContext, `INSERT INTO audit_logs (actor_id, action, resource_type, resource_id, metadata) VALUES ($1, 'catalog.media_finalized', 'product_media', $2, jsonb_build_object('product_id', $3::bigint, 'content_type', $4::text, 'byte_size', $5::bigint))`, fmt.Sprint(sellerOwnerID), fmt.Sprint(mediaID), record.ProductID, contentType, byteSize)
+		_, err = tx.Exec(transactionContext, `INSERT INTO audit_logs (actor_id, action, resource_type, resource_id, request_id, metadata) VALUES ($1, 'catalog.media_finalized', 'product_media', $2, $3, jsonb_build_object('product_id', $4::bigint, 'content_type', $5::text, 'byte_size', $6::bigint))`, fmt.Sprint(sellerOwnerID), fmt.Sprint(mediaID), ports.RequestID(transactionContext), record.ProductID, contentType, byteSize)
 		return err
 	})
 	return record, err

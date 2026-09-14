@@ -1,4 +1,6 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-/* The checked-in theme.css contains the WeeVCrafts editorial system. */
+/* This source builds the live transport stylesheet. The UI preview keeps
+   readable source CSS beside build-generated minified assets, so preview
+   pages remain inspectable without serving duplicate unminified requests. */
