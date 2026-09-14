@@ -4,6 +4,7 @@ go 1.26
 
 require (
 	github.com/a-h/templ v0.3.1020
+	github.com/aws/aws-lambda-go v1.55.0
 	github.com/jackc/pgx/v5 v5.7.2
 	github.com/minio/minio-go/v7 v7.0.97
 	github.com/redis/go-redis/v9 v9.7.0

@@ -1,0 +1,25 @@
+# Netlify configuration for the WeeVCrafts UI-first preview.
+#
+# The preview is a compiled Go binary (embedded templ pages, CSS, JS, and
+# images), so Netlify Functions with the Lambda-compatible Go runtime serves
+# every route through a single catch-all rewrite. See
+# netlify/functions/web/main.go for the net/http adapter.
+
+[build]
+  base = "."
+  command = "./scripts/build-netlify-function.sh"
+  functions = "netlify/functions-dist"
+  publish = "netlify/publish"
+
+[build.environment]
+  GO_VERSION = "1.26"
+  GO_IMPORT_PATH = "github.com/wecratfs/commerce"
+  NODE_VERSION = "22"
+
+# Every request — pages, /assets/*, /ui/* HTMX targets — is handled by the Go
+# function. Asset caching headers are set by the handler itself.
+[[redirects]]
+  from = "/*"
+  to = "/.netlify/functions/web"
+  status = 200
+  force = true
