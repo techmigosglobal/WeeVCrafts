@@ -138,3 +138,21 @@ session. HTMX mutation targets live under `/ui/*` (with stable
 tabs, and selectors. The existing `cmd/res2` backend composition and
 `Dockerfile` remain available for the later live integration milestone;
 `Dockerfile.web` packages this UI preview independently.
+
+### UI preview role accounts
+
+The UI preview now starts at `/login` with five local-only demo accounts. These
+credentials are deliberately not production credentials and are accepted only
+by `cmd/web` in `WEB_UI_MODE=mock`:
+
+| Workspace | Email | Password |
+|---|---|---|
+| Customer | `customer@demo.weevcrafts.in` | `Customer@123` |
+| Vendor / Seller | `vendor@demo.weevcrafts.in` | `Vendor@123` |
+| Marketplace Admin | `admin@demo.weevcrafts.in` | `Admin@123` |
+| Super Admin | `superadmin@demo.weevcrafts.in` | `SuperAdmin@123` |
+| Support Agent | `support@demo.weevcrafts.in` | `Support@123` |
+
+The preview keeps role identity and customer cart/wishlist state in a
+per-browser in-memory session. Role portals require the matching preview
+account; public catalogue and maker pages remain browseable without signing in.

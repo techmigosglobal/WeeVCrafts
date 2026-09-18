@@ -15,7 +15,6 @@ templ Document(p viewmodels.SellerAdminPage) {
       <link rel="stylesheet" href="/assets/css/fonts.min.css"/>
       <link rel="stylesheet" href="/assets/css/seller-admin.min.css"/>
       <style>[x-cloak]{display:none!important}</style>
-      <script defer src="/assets/js/htmx.min.js"></script>
       <script defer src="/assets/js/alpine.min.js"></script>
     </head>
     <body class="seller-body" x-data="{sidebar:false}" @keydown.escape.window="sidebar=false; $nextTick(() => $refs.sellerMenu.focus())" @keydown.tab.window="if (sidebar) { const focusables = $el.querySelectorAll('#seller-sidebar a, #seller-sidebar button'); const first = focusables[0]; const last = focusables[focusables.length - 1]; if ($event.shiftKey && document.activeElement === first) { $event.preventDefault(); last.focus(); } else if (!$event.shiftKey && document.activeElement === last) { $event.preventDefault(); first.focus(); } }">
@@ -53,7 +52,7 @@ templ SellerHeader(p viewmodels.SellerAdminPage) {
         <button type="submit" aria-label="Search"><span class="material-symbols-outlined" aria-hidden="true">search</span></button>
       </form>
       <a class="seller-notification" href="/seller-admin/messages?notice=Notifications+opened" aria-label="Notifications"><span class="material-symbols-outlined" aria-hidden="true">notifications</span><b>3</b><small>Notifications</small></a>
-      <a class="seller-user" href="/seller-admin/settings"><span class="seller-user-avatar">WT</span><span><strong>Weaver's Touch</strong><small>Seller Since 2023</small></span><span class="material-symbols-outlined" aria-hidden="true">expand_more</span></a>
+      <a class="seller-user" href="/seller-admin/settings"><span class="seller-user-avatar">{ sellerInitials(p.UserName) }</span><span><strong>{ p.UserName }</strong><small>{ p.UserRole } · Weaver's Touch</small></span><span class="material-symbols-outlined" aria-hidden="true">expand_more</span></a>
     </div>
     <nav class="seller-global-nav" aria-label="Store navigation"><a href="/categories">Categories <span class="material-symbols-outlined" aria-hidden="true">expand_more</span></a><a href="/products?category=offers">Offers</a><a href="/makers/mithila-arts">Makers</a><a href="/seller-admin/onboarding">Sell on WeeVCrafts</a><span></span><a href="/our-story">Our Story</a><a href="/orders">Track Order</a><a href="/returns">Help</a></nav>
   </header>
@@ -62,7 +61,7 @@ templ SellerHeader(p viewmodels.SellerAdminPage) {
 templ SellerSidebar(p viewmodels.SellerAdminPage) {
   <aside id="seller-sidebar" class="seller-sidebar" :class="sidebar ? 'is-open' : ''">
     <button class="seller-sidebar-close" type="button" x-ref="sellerSidebarClose" aria-label="Close seller navigation" @click="sidebar=false; $nextTick(() => $refs.sellerMenu.focus())"><span class="material-symbols-outlined" aria-hidden="true">close</span></button>
-    <div class="seller-profile-mini"><span class="seller-profile-avatar"><img width="1254" height="1254" src="/assets/images/customer/maker-mithila.webp" alt="Weaver's Touch"/></span><span><strong>Weaver's Touch</strong><small>seller@weaverstouch.in</small><a href="/makers/weavers-touch">View Store <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a></span></div>
+    <div class="seller-profile-mini"><span class="seller-profile-avatar"><img width="1254" height="1254" src="/assets/images/customer/maker-mithila.webp" alt="Weaver's Touch"/></span><span><strong>{ p.UserName }</strong><small>{ p.UserEmail }</small><a href="/makers/weavers-touch">View Store <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a></span></div>
     <nav class="seller-nav" aria-label="Seller portal navigation">
       @SellerNav("onboarding", "Onboarding", "home_work", p.Active, "/seller-admin/onboarding")
       @SellerNav("dashboard", "Dashboard", "dashboard", p.Active, "/seller-admin")
@@ -78,7 +77,7 @@ templ SellerSidebar(p viewmodels.SellerAdminPage) {
       @SellerNav("support", "Help & Support", "help_outline", p.Active, "/seller-admin/support")
       @SellerNav("team", "Team & Permissions", "manage_accounts", p.Active, "/seller-admin/team")
       @SellerNav("settings", "Store & Account", "settings", p.Active, "/seller-admin/settings")
-      <a class="seller-nav-link" href="/seller-admin?notice=You+have+been+logged+out"><span class="material-symbols-outlined" aria-hidden="true">logout</span><span>Log Out</span></a>
+      <a class="seller-nav-link" href="/logout"><span class="material-symbols-outlined" aria-hidden="true">logout</span><span>Log Out</span></a>
     </nav>
     <div class="seller-impact"><span class="material-symbols-outlined" aria-hidden="true">park</span><p>Grow together<br/>Create with purpose.</p><strong>WeeVCrafts<br/>supports artisan<br/>businesses.</strong><a href="/seller-admin/products?notice=New+product+form+opened">List New Product <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a></div>
   </aside>

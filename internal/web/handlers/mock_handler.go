@@ -34,6 +34,31 @@ func (h *MockHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.static.ServeHTTP(w, r)
 		return
 	}
+	if r.URL.Path == "/logout" {
+		h.logout(w, r)
+		return
+	}
+	if r.URL.Path == "/login" && r.Method == http.MethodPost {
+		h.login(w, r)
+		return
+	}
+	if notice := r.URL.Query().Get("notice"); notice != "" {
+		h.store.recordAction(w, r, notice)
+	}
+	if isRolePortal(r.URL.Path) {
+		allowed := []mockRole{roleCustomer}
+		switch {
+		case r.URL.Path == "/admin" || strings.HasPrefix(r.URL.Path, "/admin/"):
+			allowed = []mockRole{roleAdmin, roleSuperAdmin}
+		case r.URL.Path == "/seller-admin" || strings.HasPrefix(r.URL.Path, "/seller-admin/"):
+			allowed = []mockRole{roleVendor}
+		case r.URL.Path == "/support-portal" || strings.HasPrefix(r.URL.Path, "/support-portal/"):
+			allowed = []mockRole{roleSupport}
+		}
+		if !h.requireRoles(w, r, allowed...) {
+			return
+		}
+	}
 	if strings.HasPrefix(r.URL.Path, "/ui/") {
 		if r.Method == http.MethodGet {
 			h.fragment(w, r)
@@ -136,12 +161,53 @@ func (h *MockHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (h *MockHandler) login(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	account, ok := findMockAccount(r.FormValue("email"), r.FormValue("password"))
+	if selected := strings.TrimSpace(r.FormValue("role")); selected != "" && selected != string(account.Identity.Role) {
+		ok = false
+	}
+	if !ok {
+		page := h.page(r, w)
+		page.AuthRole = strings.TrimSpace(r.FormValue("role"))
+		page.AuthEmail = strings.TrimSpace(r.FormValue("email"))
+		page.Notice = "Sign-in failed. Choose a demo role and use its exact preview credentials."
+		h.render(w, r, pages.Auth(page))
+		return
+	}
+
+	h.store.authenticate(w, r, account.Identity)
+	h.redirect(w, r, account.Identity.Destination)
+}
+
+func (h *MockHandler) logout(w http.ResponseWriter, r *http.Request) {
+	h.store.logout(w, r)
+	h.redirect(w, r, "/login?notice=You+have+been+logged+out+of+the+preview")
+}
+
 func (h *MockHandler) admin(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
 	page := adminPage(r.URL.Path, r.URL.Query())
+	if page.Notice == "" {
+		page.Notice = h.store.lastAction(w, r)
+	}
+	identity, _ := identityForRequest(h, w, r)
+	page.UserName = identity.Name
+	page.UserEmail = identity.Email
+	page.UserRole = roleLabel(identity.Role)
+	page.PortalLabel = strings.ToUpper(roleLabel(identity.Role)) + " PORTAL"
+	page.IsSuperAdmin = identity.Role == roleSuperAdmin
+	if !page.IsSuperAdmin && (page.Active == "security" || page.Workspace == "roles") {
+		w.WriteHeader(http.StatusForbidden)
+		h.render(w, r, h.accessDeniedPage(r, identity))
+		return
+	}
 	if page.Workspace != "" {
 		h.render(w, r, adminpages.Workspace(page))
 		return
@@ -180,6 +246,13 @@ func (h *MockHandler) sellerAdmin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	page := sellerAdminPage(r.URL.Path, r.URL.Query())
+	if page.Notice == "" {
+		page.Notice = h.store.lastAction(w, r)
+	}
+	identity, _ := identityForRequest(h, w, r)
+	page.UserName = identity.Name
+	page.UserEmail = identity.Email
+	page.UserRole = "Vendor"
 	if page.Workspace != "" {
 		h.render(w, r, selleradminpages.Workspace(page))
 		return
@@ -216,6 +289,13 @@ func (h *MockHandler) supportPortal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	page := supportPortalPage(r.URL.Path, r.URL.Query())
+	if page.Notice == "" {
+		page.Notice = h.store.lastAction(w, r)
+	}
+	identity, _ := identityForRequest(h, w, r)
+	page.UserName = identity.Name
+	page.UserEmail = identity.Email
+	page.UserRole = "Support Agent"
 	switch page.Active {
 	case "dashboard":
 		h.render(w, r, supportportalpages.Dashboard(page))
@@ -456,7 +536,7 @@ func (h *MockHandler) page(r *http.Request, w http.ResponseWriter) viewmodels.Cu
 	if notice == "" && r.URL.Query().Get("coupon") != "" {
 		notice = "Coupon preview applied: " + r.URL.Query().Get("coupon")
 	}
-	return viewmodels.CustomerPage{Route: r.URL.Path, Title: titleFor(r.URL.Path), Query: query, Sort: sortMode, Notice: notice, Category: category, Filters: r.URL.Query(), Brand: "WeeVCrafts", Tagline: "Handmade Today. A Kinder Tomorrow.", Description: "Authentic Indian arts, crafts and sarees, made with care.", Product: detailProduct, SavedProducts: wishlistProducts, Products: products, FilterCounts: filterCounts, Categories: mockCategories, Sellers: mockSellers, Brands: mockBrands, Cart: snapshot.cart, Orders: snapshot.orders, PaymentActivity: previewPaymentActivity(snapshot.orders), SelectedOrder: selectedOrder, Returns: mockReturns(), CartCount: cartCount(snapshot.cart), WishlistCount: len(wishlistProducts), ItemsTotal: itemsTotal, ShippingTotal: shippingTotal, DiscountTotal: discountTotal, Total: total, Page: pageNumber, Pages: pageCount, Mock: true, Authenticated: true, Now: time.Now()}
+	return viewmodels.CustomerPage{Route: r.URL.Path, Title: titleFor(r.URL.Path), Query: query, Sort: sortMode, Notice: notice, Category: category, Filters: r.URL.Query(), Brand: "WeeVCrafts", Tagline: "Handmade Today. A Kinder Tomorrow.", Description: "Authentic Indian arts, crafts and sarees, made with care.", Product: detailProduct, SavedProducts: wishlistProducts, Products: products, FilterCounts: filterCounts, Categories: mockCategories, Sellers: mockSellers, Brands: mockBrands, Cart: snapshot.cart, Orders: snapshot.orders, PaymentActivity: previewPaymentActivity(snapshot.orders), SelectedOrder: selectedOrder, Returns: mockReturns(), CartCount: cartCount(snapshot.cart), WishlistCount: len(wishlistProducts), ItemsTotal: itemsTotal, ShippingTotal: shippingTotal, DiscountTotal: discountTotal, Total: total, Page: pageNumber, Pages: pageCount, Mock: true, Authenticated: snapshot.identity.Role != "", SessionRole: string(snapshot.identity.Role), SessionName: snapshot.identity.Name, SessionEmail: snapshot.identity.Email, AuthRole: r.URL.Query().Get("role"), AuthEmail: r.URL.Query().Get("email"), DemoAccounts: demoAccounts(), Now: time.Now()}
 }
 
 func previewPaymentActivity(orders []viewmodels.Order) []viewmodels.PaymentActivity {
@@ -636,6 +716,7 @@ func cartTotals(items []viewmodels.CartItem) (itemsTotal, shippingTotal, discoun
 }
 
 type sessionSnapshot struct {
+	identity mockIdentity
 	cart     []viewmodels.CartItem
 	orders   []viewmodels.Order
 	wishlist map[string]bool
@@ -645,7 +726,7 @@ func (s *mockStore) snapshot(w http.ResponseWriter, r *http.Request) sessionSnap
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	session := s.sessionUnlocked(w, r)
-	return sessionSnapshot{cart: append([]viewmodels.CartItem(nil), session.Cart...), orders: append([]viewmodels.Order(nil), session.Orders...), wishlist: cloneWishlist(session.Wishlist)}
+	return sessionSnapshot{identity: session.Identity, cart: append([]viewmodels.CartItem(nil), session.Cart...), orders: append([]viewmodels.Order(nil), session.Orders...), wishlist: cloneWishlist(session.Wishlist)}
 }
 
 func cloneWishlist(source map[string]bool) map[string]bool {

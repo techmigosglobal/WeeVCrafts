@@ -21,7 +21,9 @@ templ Document(p viewmodels.CustomerPage) {
       <link rel="stylesheet" href="/assets/css/theme.min.css"/>
       <link rel="stylesheet" href="/assets/css/utility.min.css"/>
       <style>[x-cloak]{display:none!important}</style>
-      <script defer src="/assets/js/htmx.min.js"></script>
+      if customerNeedsHTMX(p.Route) {
+        <script defer src="/assets/js/htmx.min.js"></script>
+      }
       <script defer src="/assets/js/alpine.min.js"></script>
       <script>
         function initDetailInteractions() {
@@ -126,11 +128,30 @@ templ Document(p viewmodels.CustomerPage) {
           }
           syncExpanded();
         }
+        function initDemoAccounts() {
+          var form = document.querySelector('form[action="/login"]');
+          if (!form || form.dataset.demoAccountsBound === "true") return;
+          var role = form.querySelector('input[name="role"]');
+          var email = form.querySelector('input[name="email"]');
+          var password = form.querySelector('input[name="password"]');
+          document.querySelectorAll(".demo-account-card").forEach(function (card) {
+            card.addEventListener("click", function () {
+              role.value = card.dataset.role || "";
+              email.value = card.dataset.email || "";
+              password.value = card.dataset.password || "";
+              document.querySelectorAll(".demo-account-card").forEach(function (item) { item.setAttribute("aria-pressed", item === card ? "true" : "false"); });
+              email.focus();
+            });
+          });
+          form.dataset.demoAccountsBound = "true";
+        }
         document.addEventListener("DOMContentLoaded", initDetailInteractions);
         document.addEventListener("DOMContentLoaded", initSearchSuggestions);
+        document.addEventListener("DOMContentLoaded", initDemoAccounts);
         document.addEventListener("htmx:afterSettle", function () {
           initDetailInteractions();
           initSearchSuggestions();
+          initDemoAccounts();
         });
       </script>
     </head>

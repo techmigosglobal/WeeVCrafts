@@ -3,9 +3,51 @@ package handlers
 import (
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 )
+
+func previewLogin(t *testing.T, h *MockHandler, role mockRole) *http.Cookie {
+	t.Helper()
+	account, ok := findMockAccountByRole(string(role))
+	if !ok {
+		t.Fatalf("missing preview account for %q", role)
+	}
+	form := url.Values{"email": {account.Identity.Email}, "password": {account.Password}, "role": {string(role)}}
+	request := httptest.NewRequest(http.MethodPost, "/login", strings.NewReader(form.Encode()))
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	response := httptest.NewRecorder()
+	h.ServeHTTP(response, request)
+	if response.Code != http.StatusSeeOther {
+		t.Fatalf("preview login for %q = %d, want 303", role, response.Code)
+	}
+	for _, cookie := range response.Result().Cookies() {
+		if cookie.Name == "weevcrafts_ui" {
+			return cookie
+		}
+	}
+	t.Fatalf("preview login for %q did not set a session cookie", role)
+	return nil
+}
+
+func authenticatedPreviewRequest(t *testing.T, h *MockHandler, method, path string) *http.Request {
+	t.Helper()
+	request := httptest.NewRequest(method, path, nil)
+	var role mockRole
+	switch {
+	case strings.HasPrefix(path, "/admin"):
+		role = roleSuperAdmin
+	case strings.HasPrefix(path, "/seller-admin"):
+		role = roleVendor
+	case strings.HasPrefix(path, "/support-portal"):
+		role = roleSupport
+	default:
+		return request
+	}
+	request.AddCookie(previewLogin(t, h, role))
+	return request
+}
 
 func TestMockCustomerRoutes(t *testing.T) {
 	h := NewMockHandler()
@@ -102,7 +144,7 @@ func TestMockPortalRoutesHaveNoDeadGeneratedLinks(t *testing.T) {
 	routes := []string{
 		"/", "/categories", "/brands", "/brands/mithila-arts", "/products", "/deals", "/search?q=saree",
 		"/products/chanderi-royal", "/makers/mithila-arts", "/wishlist", "/cart", "/checkout", "/orders",
-			"/tracking", "/payments", "/payments/success", "/payments/pending", "/payments/failed", "/returns",
+		"/tracking", "/payments", "/payments/success", "/payments/pending", "/payments/failed", "/returns",
 		"/account", "/faq", "/contact", "/seller",
 		"/admin", "/admin/sellers", "/admin/products", "/admin/brands", "/admin/inventory", "/admin/orders",
 		"/admin/returns", "/admin/disputes", "/admin/finance", "/admin/payments", "/admin/failed-payments",
@@ -117,7 +159,8 @@ func TestMockPortalRoutesHaveNoDeadGeneratedLinks(t *testing.T) {
 	for _, route := range routes {
 		t.Run(route, func(t *testing.T) {
 			res := httptest.NewRecorder()
-			NewMockHandler().ServeHTTP(res, httptest.NewRequest(http.MethodGet, route, nil))
+			h := NewMockHandler()
+			h.ServeHTTP(res, authenticatedPreviewRequest(t, h, http.MethodGet, route))
 			if res.Code != http.StatusOK {
 				t.Fatalf("status = %d, want 200", res.Code)
 			}
@@ -153,7 +196,8 @@ func TestMockPRDScreenRouteMatrix(t *testing.T) {
 		for _, route := range group.paths {
 			t.Run(group.name+route, func(t *testing.T) {
 				res := httptest.NewRecorder()
-				NewMockHandler().ServeHTTP(res, httptest.NewRequest(http.MethodGet, route, nil))
+				h := NewMockHandler()
+				h.ServeHTTP(res, authenticatedPreviewRequest(t, h, http.MethodGet, route))
 				if res.Code != http.StatusOK {
 					t.Fatalf("route %s status = %d, want 200", route, res.Code)
 				}
@@ -347,11 +391,11 @@ func TestMockProductCardsUseProductRatings(t *testing.T) {
 }
 
 func TestMockAdminRoutes(t *testing.T) {
-	h := NewMockHandler()
 	routes := []string{"/admin", "/admin/sellers", "/admin/products", "/admin/brands", "/admin/inventory", "/admin/orders", "/admin/returns", "/admin/disputes", "/admin/finance", "/admin/payments", "/admin/failed-payments", "/admin/support", "/admin/customers", "/admin/reviews", "/admin/marketing", "/admin/analytics", "/admin/security", "/admin/roles"}
 	for _, route := range routes {
 		t.Run(route, func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodGet, route+"?notice=Preview+action+completed", nil)
+			h := NewMockHandler()
+			req := authenticatedPreviewRequest(t, h, http.MethodGet, route+"?notice=Preview+action+completed")
 			res := httptest.NewRecorder()
 			h.ServeHTTP(res, req)
 			if res.Code != http.StatusOK {
@@ -379,7 +423,8 @@ func TestMockAdminAndSellerWorkspacesRenderTheirOwnSurface(t *testing.T) {
 	}
 	for _, test := range tests {
 		res := httptest.NewRecorder()
-		NewMockHandler().ServeHTTP(res, httptest.NewRequest(http.MethodGet, test.route, nil))
+		h := NewMockHandler()
+		h.ServeHTTP(res, authenticatedPreviewRequest(t, h, http.MethodGet, test.route))
 		if res.Code != http.StatusOK || !strings.Contains(res.Body.String(), test.want) {
 			t.Fatalf("route %s = %d, missing %q", test.route, res.Code, test.want)
 		}
@@ -392,7 +437,7 @@ func TestMockSellerAdminRoutes(t *testing.T) {
 	for _, route := range routes {
 		t.Run(route, func(t *testing.T) {
 			res := httptest.NewRecorder()
-			h.ServeHTTP(res, httptest.NewRequest(http.MethodGet, route+"?notice=Preview+action+completed", nil))
+			h.ServeHTTP(res, authenticatedPreviewRequest(t, h, http.MethodGet, route+"?notice=Preview+action+completed"))
 			if res.Code != http.StatusOK {
 				t.Fatalf("status = %d, want 200", res.Code)
 			}
@@ -406,7 +451,8 @@ func TestMockSellerAdminRoutes(t *testing.T) {
 
 func TestMockSellerAdminMethodBoundary(t *testing.T) {
 	res := httptest.NewRecorder()
-	NewMockHandler().ServeHTTP(res, httptest.NewRequest(http.MethodPost, "/seller-admin/orders", nil))
+	h := NewMockHandler()
+	h.ServeHTTP(res, authenticatedPreviewRequest(t, h, http.MethodPost, "/seller-admin/orders"))
 	if res.Code != http.StatusMethodNotAllowed {
 		t.Fatalf("status = %d, want 405", res.Code)
 	}
@@ -429,7 +475,8 @@ func TestMockRoleFiltersAreApplied(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.route, func(t *testing.T) {
 			res := httptest.NewRecorder()
-			NewMockHandler().ServeHTTP(res, httptest.NewRequest(http.MethodGet, test.route, nil))
+			h := NewMockHandler()
+			h.ServeHTTP(res, authenticatedPreviewRequest(t, h, http.MethodGet, test.route))
 			if res.Code != http.StatusOK {
 				t.Fatalf("status = %d, want 200", res.Code)
 			}
@@ -444,7 +491,8 @@ func TestMockRoleFiltersAreApplied(t *testing.T) {
 	}
 
 	res := httptest.NewRecorder()
-	NewMockHandler().ServeHTTP(res, httptest.NewRequest(http.MethodGet, "/support-portal/cases?q=does-not-exist", nil))
+	h := NewMockHandler()
+	h.ServeHTTP(res, authenticatedPreviewRequest(t, h, http.MethodGet, "/support-portal/cases?q=does-not-exist"))
 	if res.Code != http.StatusOK || !strings.Contains(res.Body.String(), "No support cases") {
 		t.Fatalf("empty support search response = %d, expected safe empty state", res.Code)
 	}
@@ -472,7 +520,8 @@ func TestMockRoleSearchesKeepEmptyStatesSafe(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.route, func(t *testing.T) {
 			res := httptest.NewRecorder()
-			NewMockHandler().ServeHTTP(res, httptest.NewRequest(http.MethodGet, test.route, nil))
+			h := NewMockHandler()
+			h.ServeHTTP(res, authenticatedPreviewRequest(t, h, http.MethodGet, test.route))
 			if res.Code != http.StatusOK {
 				t.Fatalf("status = %d, want 200", res.Code)
 			}
@@ -493,7 +542,7 @@ func TestMockSupportPortalRoutes(t *testing.T) {
 	for _, route := range routes {
 		t.Run(route, func(t *testing.T) {
 			res := httptest.NewRecorder()
-			h.ServeHTTP(res, httptest.NewRequest(http.MethodGet, route+"?notice=Preview+action+completed", nil))
+			h.ServeHTTP(res, authenticatedPreviewRequest(t, h, http.MethodGet, route+"?notice=Preview+action+completed"))
 			if res.Code != http.StatusOK {
 				t.Fatalf("status = %d, want 200", res.Code)
 			}
@@ -523,7 +572,7 @@ func TestMockFilteredRoleQueuesKeepEmptyStatesSafe(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.route, func(t *testing.T) {
 			response := httptest.NewRecorder()
-			handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, tc.route, nil))
+			handler.ServeHTTP(response, authenticatedPreviewRequest(t, handler, http.MethodGet, tc.route))
 			if response.Code != http.StatusOK {
 				t.Fatalf("expected 200 for filtered empty state, got %d", response.Code)
 			}
@@ -536,7 +585,8 @@ func TestMockFilteredRoleQueuesKeepEmptyStatesSafe(t *testing.T) {
 
 func TestMockSupportPortalDataBoundary(t *testing.T) {
 	res := httptest.NewRecorder()
-	NewMockHandler().ServeHTTP(res, httptest.NewRequest(http.MethodGet, "/support-portal/customers", nil))
+	h := NewMockHandler()
+	h.ServeHTTP(res, authenticatedPreviewRequest(t, h, http.MethodGet, "/support-portal/customers"))
 	if res.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", res.Code)
 	}
@@ -555,7 +605,8 @@ func TestMockSupportPortalDataBoundary(t *testing.T) {
 
 func TestMockSupportPortalMethodBoundary(t *testing.T) {
 	res := httptest.NewRecorder()
-	NewMockHandler().ServeHTTP(res, httptest.NewRequest(http.MethodPost, "/support-portal/cases", nil))
+	h := NewMockHandler()
+	h.ServeHTTP(res, authenticatedPreviewRequest(t, h, http.MethodPost, "/support-portal/cases"))
 	if res.Code != http.StatusMethodNotAllowed {
 		t.Fatalf("status = %d, want 405", res.Code)
 	}

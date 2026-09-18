@@ -11,12 +11,15 @@ import (
 )
 
 type mockSession struct {
-	Cart     []viewmodels.CartItem
-	Wishlist map[string]bool
-	Query    string
-	Category string
-	Sort     string
-	Orders   []viewmodels.Order
+	Identity    mockIdentity
+	LastAction  string
+	ActionCount int
+	Cart        []viewmodels.CartItem
+	Wishlist    map[string]bool
+	Query       string
+	Category    string
+	Sort        string
+	Orders      []viewmodels.Order
 }
 
 type mockStore struct {
@@ -26,23 +29,42 @@ type mockStore struct {
 
 func newMockStore() *mockStore { return &mockStore{sessions: make(map[string]*mockSession)} }
 
-func (s *mockStore) session(w http.ResponseWriter, r *http.Request) *mockSession {
-	const cookieName = "weevcrafts_ui"
-	cookie, err := r.Cookie(cookieName)
-	id := ""
-	if err == nil {
-		id = cookie.Value
-	}
-	if id == "" {
-		id = fmt.Sprintf("preview-%d", nextSessionID())
-		http.SetCookie(w, &http.Cookie{Name: cookieName, Value: id, Path: "/", HttpOnly: true, SameSite: http.SameSiteLaxMode})
+func (s *mockStore) authenticate(w http.ResponseWriter, r *http.Request, identity mockIdentity) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	session := s.sessionUnlocked(w, r)
+	session.Identity = identity
+}
+
+func (s *mockStore) logout(w http.ResponseWriter, r *http.Request) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	session := s.sessionUnlocked(w, r)
+	session.Identity = mockIdentity{}
+}
+
+func (s *mockStore) recordAction(w http.ResponseWriter, r *http.Request, action string) {
+	if strings.TrimSpace(action) == "" {
+		return
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.sessions[id] == nil {
-		s.sessions[id] = &mockSession{Wishlist: map[string]bool{"madhubani-tree": true, "brass-elephant": true, "chanderi-royal": true, "wooden-box": true, "ceramic-mugs": true, "blue-tote": true}, Cart: seedCart(), Orders: seedOrders()}
-	}
-	return s.sessions[id]
+	session := s.sessionUnlocked(w, r)
+	session.LastAction = strings.TrimSpace(action)
+	session.ActionCount++
+}
+
+func (s *mockStore) lastAction(w http.ResponseWriter, r *http.Request) string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.sessionUnlocked(w, r).LastAction
+}
+
+func (s *mockStore) identity(w http.ResponseWriter, r *http.Request) (mockIdentity, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	identity := s.sessionUnlocked(w, r).Identity
+	return identity, identity.Role != ""
 }
 
 var sessionCounter int64

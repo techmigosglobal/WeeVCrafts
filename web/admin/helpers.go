@@ -42,6 +42,17 @@ func adminPath(active string) string {
 	return "/admin/" + active
 }
 
+func initials(name string) string {
+	parts := strings.Fields(strings.TrimSpace(name))
+	if len(parts) == 0 {
+		return "UI"
+	}
+	if len(parts) == 1 {
+		return strings.ToUpper(string([]rune(parts[0])[0]))
+	}
+	return strings.ToUpper(string([]rune(parts[0])[0]) + string([]rune(parts[len(parts)-1])[0]))
+}
+
 func trendClass(positive bool) string {
 	if positive {
 		return "trend positive"

@@ -44,6 +44,7 @@ body.support-body img { display: block; max-width: 100%; }
 .support-notification { position: relative; display: grid; width: 27px; height: 33px; place-items: center; padding: 0; border: 0; color: var(--support-ink); background: transparent; }
 .support-notification b { position: absolute; top: 1px; right: 0; display: grid; width: 15px; height: 15px; place-items: center; border-radius: 50%; color: #fff; background: var(--support-red); font-size: 11px; }
 .support-user { display: flex; align-items: center; gap: 7px; min-width: 144px; }
+.support-user-avatar { display: grid; width: 35px; height: 35px; place-items: center; border-radius: 50%; color: var(--support-red); background: var(--support-red-soft); font-size: 10px; font-weight: 700; }
 .support-user img { width: 35px; height: 35px; border-radius: 50%; object-fit: cover; }
 .support-user strong, .support-user small { display: block; }
 .support-user strong { font: 700 11px var(--support-sans); }

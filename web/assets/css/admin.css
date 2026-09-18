@@ -62,6 +62,7 @@ img { display: block; max-width: 100%; }
 .admin-icon-button { position: relative; display: grid; place-items: center; width: 35px; height: 35px; border: 0; background: transparent; color: var(--admin-navy); }
 .admin-icon-button b { position: absolute; top: -1px; right: -1px; display: grid; min-width: 16px; height: 16px; place-items: center; border-radius: 99px; background: var(--admin-red); color: #fff; font-size: 11px; }
 .admin-user { display: flex; align-items: center; gap: 8px; min-width: 140px; border-left: 1px solid var(--admin-line); padding-left: 12px; }
+.admin-logout { color: var(--admin-red); font-size: 10px; font-weight: 700; }
 .admin-user > span:nth-child(2) { min-width: 0; }
 .admin-user strong, .admin-user small { display: block; white-space: nowrap; }
 .admin-user strong { font-size: 12px; }

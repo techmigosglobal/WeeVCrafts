@@ -10,12 +10,22 @@ templ Auth(p viewmodels.CustomerPage) {
           <div class="utility-notice" role="status"><span class="material-symbols-outlined" aria-hidden="true">check_circle</span>{ p.Notice }</div>
         }
         if p.Route == "/login" {
-          @AuthHeading("WELCOME BACK", "Sign in to WeeVCrafts", "Keep your saved pieces, orders and maker stories close.")
-          <form class="utility-form" action="/login?notice=Sign-in+preview+submitted" method="get">
-            <label>Email address<input name="email" type="email" required/></label>
-            <label>Password<input name="password" type="password" required/></label>
+          @AuthHeading("CHOOSE YOUR WORKSPACE", "Sign in to WeeVCrafts", "Use one of the local preview accounts to open the customer, vendor, admin or support workspace.")
+          <div class="demo-account-grid" role="list" aria-label="Preview accounts">
+            for _, account := range p.DemoAccounts {
+              <button class="demo-account-card" type="button" data-role={ account.Role } data-email={ account.Email } data-password={ account.Password }>
+                <span class="material-symbols-outlined" aria-hidden="true">{ demoAccountIcon(account.Role) }</span>
+                <span><strong>{ account.Label }</strong><small>{ account.Name }</small></span>
+                <span class="demo-account-action">Use account</span>
+              </button>
+            }
+          </div>
+          <form class="utility-form" action="/login" method="post">
+            <input name="role" type="hidden" value={ p.AuthRole }/>
+            <label>Email address<input name="email" type="email" autocomplete="username" value={ p.AuthEmail } required/></label>
+            <label>Password<input name="password" type="password" autocomplete="current-password" required/></label>
             <label class="check-line"><input type="checkbox" name="remember"/> Keep me signed in on this device</label>
-            <button class="primary-button full" type="submit">Sign in <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></button>
+            <button class="primary-button full" type="submit">Sign in to preview <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></button>
           </form>
           <div class="auth-links"><a href="/forgot-password">Forgot your password?</a><span>New here? <a href="/register">Create an account</a></span></div>
         } else if p.Route == "/register" {
@@ -49,6 +59,20 @@ templ Auth(p viewmodels.CustomerPage) {
           <a class="outline-button full utility-secondary-action" href="/verify-email?notice=Verification+email+preview+resent">Resend verification email</a>
         }
         <p class="preview-disclaimer"><span class="material-symbols-outlined" aria-hidden="true">visibility</span> Preview mode: this form demonstrates the flow without creating an account or sending email.</p>
+      </div>
+    </section>
+  }
+}
+
+templ AccessDenied(p viewmodels.CustomerPage) {
+  @Document(p) {
+    <section class="container utility-shell auth-shell">
+      <div class="utility-card auth-card access-denied-card">
+        <p class="eyebrow">ROLE WORKSPACE</p>
+        <h1>Access restricted</h1>
+        <p class="utility-lead">{ p.Notice }</p>
+        <div class="utility-callout"><span class="material-symbols-outlined" aria-hidden="true">lock</span><div><strong>Choose the matching preview account</strong><p>Each UI-only role has its own navigation and sample records.</p></div></div>
+        <a class="primary-button full" href="/login">Return to role sign in <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a>
       </div>
     </section>
   }

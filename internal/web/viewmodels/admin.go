@@ -5,6 +5,8 @@ package viewmodels
 // the application services in cmd/res2.
 type AdminPage struct {
 	Active, Workspace, Title, Subtitle, Query, Range, Notice string
+	UserName, UserEmail, UserRole, PortalLabel               string
+	IsSuperAdmin                                             bool
 	Stats                                                    []AdminStat
 	Bars                                                     []AdminBar
 	Donut                                                    []AdminDonut
@@ -84,6 +86,7 @@ type AdminConfig struct {
 // connected; every record in this view model belongs to Weaver's Touch.
 type SellerAdminPage struct {
 	Active, Workspace, Title, Subtitle, Query, Range, Tab, Notice string
+	UserName, UserEmail, UserRole                                 string
 	Stats                                                         []SellerAdminStat
 	Products                                                      []SellerAdminProduct
 	Inventory                                                     []SellerAdminInventory
@@ -137,6 +140,7 @@ type SellerTeamMember struct {
 // reflect the PRD's support data boundary.
 type SupportPortalPage struct {
 	Active, Title, Subtitle, Query, Range, Tab, Notice string
+	UserName, UserEmail, UserRole                      string
 	Stats                                              []SupportPortalStat
 	Cases                                              []SupportPortalCase
 	Conversations                                      []SupportPortalConversation

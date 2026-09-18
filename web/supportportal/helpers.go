@@ -6,6 +6,17 @@ import (
 	"github.com/wecratfs/commerce/internal/web/viewmodels"
 )
 
+func supportInitials(name string) string {
+	parts := strings.Fields(strings.TrimSpace(name))
+	if len(parts) == 0 {
+		return "UI"
+	}
+	if len(parts) == 1 {
+		return strings.ToUpper(string([]rune(parts[0])[0]))
+	}
+	return strings.ToUpper(string([]rune(parts[0])[0]) + string([]rune(parts[len(parts)-1])[0]))
+}
+
 func supportNavClass(key, current string) string {
 	if key == current {
 		return "support-nav-link active"

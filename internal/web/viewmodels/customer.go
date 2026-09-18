@@ -76,5 +76,14 @@ type CustomerPage struct {
 	Page, Pages                                     int
 	CheckoutStep                                    int
 	Authenticated, Mock                             bool
+	SessionRole, SessionName, SessionEmail          string
+	AuthRole, AuthEmail, AuthPassword               string
+	DemoAccounts                                    []DemoAccount
 	Now                                             time.Time
+}
+
+// DemoAccount describes one of the deliberately local-only preview accounts.
+// It is rendered only by the mock login screen and is never used by cmd/res2.
+type DemoAccount struct {
+	Role, Label, Email, Password, Name, Destination string
 }

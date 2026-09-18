@@ -7,6 +7,17 @@ import (
 	"github.com/wecratfs/commerce/internal/web/viewmodels"
 )
 
+func sellerInitials(name string) string {
+	parts := strings.Fields(strings.TrimSpace(name))
+	if len(parts) == 0 {
+		return "UI"
+	}
+	if len(parts) == 1 {
+		return strings.ToUpper(string([]rune(parts[0])[0]))
+	}
+	return strings.ToUpper(string([]rune(parts[0])[0]) + string([]rune(parts[len(parts)-1])[0]))
+}
+
 func firstSellerReturn(returns []viewmodels.SellerAdminReturn) viewmodels.SellerAdminReturn {
 	if len(returns) == 0 {
 		return viewmodels.SellerAdminReturn{}

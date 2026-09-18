@@ -82,6 +82,30 @@ func paginationCurrent(page, current int) string {
 
 func pageLabel(page int) string { return strconv.Itoa(page) }
 
+func demoAccountIcon(role string) string {
+	switch role {
+	case "customer":
+		return "person"
+	case "vendor":
+		return "storefront"
+	case "marketplace_admin", "super_admin":
+		return "admin_panel_settings"
+	case "support_agent":
+		return "support_agent"
+	default:
+		return "account_circle"
+	}
+}
+
+func customerNeedsHTMX(route string) bool {
+	switch route {
+	case "/", "/products", "/search", "/deals", "/wishlist", "/cart", "/checkout", "/orders", "/tracking", "/returns", "/payments":
+		return true
+	default:
+		return strings.HasPrefix(route, "/products/") || strings.HasPrefix(route, "/orders/") || strings.HasPrefix(route, "/returns/") || strings.HasPrefix(route, "/payments/")
+	}
+}
+
 func orderPath(number string) string {
 	return "/orders/" + strings.TrimPrefix(strings.TrimSpace(number), "#")
 }
