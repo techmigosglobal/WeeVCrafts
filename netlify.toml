@@ -1,6 +1,6 @@
 # Production Netlify adapter for the real Go/PostgreSQL marketplace backend.
-# Runtime state lives in PostgreSQL, Redis, and S3-compatible object storage;
-# function memory and the static publish directory are never data stores.
+# Runtime state lives in Netlify PostgreSQL; function memory and the static
+# publish directory are never data stores. VPS deployments use Redis and S3.
 
 [build]
   base = "."

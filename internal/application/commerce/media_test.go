@@ -1,6 +1,7 @@
 package commerce
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"testing"
@@ -69,6 +70,7 @@ type mediaStorage struct {
 	deleted    bool
 	inspected  int
 	downloaded int
+	body       []byte
 }
 
 func (s *mediaStorage) CreateUploadURL(context.Context, ports.UploadRequest) (ports.UploadURL, error) {
@@ -88,6 +90,23 @@ func (s *mediaStorage) CreateDownloadURL(context.Context, string, time.Duration)
 func (s *mediaStorage) DeleteObject(context.Context, string) error {
 	s.deleted = true
 	return nil
+}
+
+type boundedMediaStorage struct {
+	*mediaStorage
+	maxBytes int64
+	uploaded []byte
+}
+
+func (s *boundedMediaStorage) MaxUploadBytes() int64 { return s.maxBytes }
+
+func (s *boundedMediaStorage) SaveObject(_ context.Context, _ int64, _ string, _ string, body []byte) error {
+	s.uploaded = append([]byte(nil), body...)
+	return nil
+}
+
+func (s *boundedMediaStorage) ReadObject(context.Context, string) ([]byte, ports.ObjectInfo, error) {
+	return append([]byte(nil), s.body...), s.info, nil
 }
 
 func TestMediaFinalizeVerifiesStoredObjectBeforePublishing(t *testing.T) {
@@ -148,5 +167,48 @@ func TestMediaDeleteClaimsReadyMediaBeforeRemovingObject(t *testing.T) {
 	}
 	if !storage.deleted || !repository.deleted || repository.record.Status != "deleted" {
 		t.Fatalf("ready media was not deleted safely: storage=%v repository=%v status=%s", storage.deleted, repository.deleted, repository.record.Status)
+	}
+}
+
+func TestMediaServiceHonorsStorageUploadCapacityAndStreamsToAdapter(t *testing.T) {
+	repository := &mediaLifecycleRepository{record: domaincommerce.MediaRecord{ID: 9}}
+	storage := &boundedMediaStorage{mediaStorage: &mediaStorage{}, maxBytes: 4 << 20}
+	service := NewMediaService(storage, repository)
+
+	prepared, err := service.PrepareUpload(context.Background(), 9, 12, "image/png", 2<<20)
+	if err != nil {
+		t.Fatalf("prepare upload: %v", err)
+	}
+	if prepared.MaxBytes != 4<<20 {
+		t.Fatalf("advertised upload limit = %d, want %d", prepared.MaxBytes, 4<<20)
+	}
+	if _, err := service.PrepareUpload(context.Background(), 9, 12, "image/png", 5<<20); !errors.Is(err, ErrInvalidMedia) {
+		t.Fatalf("upload beyond platform limit was accepted: %v", err)
+	}
+	payload := []byte("image bytes")
+	if err := service.UploadObject(context.Background(), 9, "products/9/opaque", "image/png", payload); err != nil {
+		t.Fatalf("owner upload rejected: %v", err)
+	}
+	if !bytes.Equal(storage.uploaded, payload) {
+		t.Fatalf("adapter received %q, want %q", storage.uploaded, payload)
+	}
+	if err := service.UploadObject(context.Background(), 10, "products/9/opaque", "image/png", payload); !errors.Is(err, ErrInvalidMedia) {
+		t.Fatalf("upload key for another owner accepted: %v", err)
+	}
+}
+
+func TestMediaServiceReadsAndVerifiesPublishedObject(t *testing.T) {
+	payload := []byte("image bytes")
+	repository := &mediaLifecycleRepository{record: domaincommerce.MediaRecord{ID: 11, ObjectKey: "products/9/opaque", ContentType: "image/png", ByteSize: int64(len(payload)), Status: "ready"}}
+	storage := &boundedMediaStorage{mediaStorage: &mediaStorage{body: payload, info: ports.ObjectInfo{ContentType: "image/png", ByteSize: int64(len(payload))}}}
+	service := NewMediaService(storage, repository)
+
+	body, contentType, err := service.ReadPublic(context.Background(), 11)
+	if err != nil || contentType != "image/png" || !bytes.Equal(body, payload) {
+		t.Fatalf("public image mismatch: body=%q type=%q err=%v", body, contentType, err)
+	}
+	storage.info.ContentType = "text/html"
+	if _, _, err := service.ReadPublic(context.Background(), 11); !errors.Is(err, ErrInvalidMedia) {
+		t.Fatalf("untrusted object content type was served: %v", err)
 	}
 }

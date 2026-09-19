@@ -12,6 +12,7 @@ import (
 
 type Config struct {
 	Address            string
+	NetlifyRuntime     bool
 	PublicURL          string
 	DatabaseURL        string
 	DatabaseMaxConns   int32
@@ -60,9 +61,10 @@ func fromEnv(netlify bool) Config {
 	}
 	return Config{
 		Address:            env("WECRATFS_ADDR", ":8080"),
+		NetlifyRuntime:     netlify,
 		PublicURL:          env("WECRATFS_PUBLIC_URL", publicURL),
-		DatabaseURL:        env("DATABASE_URL", databaseURL),
-		DatabaseMaxConns:   int32(intEnv("DATABASE_MAX_CONNS", 2)),
+		DatabaseURL:        env("DATABASE_URL", env("NETLIFY_DB_URL", databaseURL)),
+		DatabaseMaxConns:   int32(intEnv("DATABASE_MAX_CONNS", defaultDatabaseMaxConns(netlify))),
 		RedisAddress:       env("REDIS_ADDR", redisAddress),
 		MeiliAddress:       env("MEILI_ADDR", meiliAddress),
 		MeiliAPIKey:        env("MEILI_API_KEY", ""),
@@ -78,6 +80,13 @@ func fromEnv(netlify bool) Config {
 		S3Secure:           boolEnv("S3_SECURE", s3Secure),
 		S3AutoCreateBucket: boolEnv("S3_AUTO_CREATE_BUCKET", !netlify),
 	}
+}
+
+func defaultDatabaseMaxConns(netlify bool) int {
+	if netlify {
+		return 1
+	}
+	return 2
 }
 
 // ValidateNetlify rejects local defaults and insecure cookie/database settings
@@ -105,33 +114,10 @@ func (c Config) ValidateNetlify() error {
 	if c.DatabaseMaxConns < 1 || c.DatabaseMaxConns > 20 {
 		return fmt.Errorf("DATABASE_MAX_CONNS must be between 1 and 20")
 	}
-	if strings.TrimSpace(c.RedisAddress) == "" || !strings.HasPrefix(strings.ToLower(c.RedisAddress), "rediss://") || isLocalHost(redisHost(c.RedisAddress)) {
-		return fmt.Errorf("REDIS_URL must be a remote TLS Redis URL using rediss://")
-	}
 	if strings.TrimSpace(c.PublicURL) == "" || !strings.HasPrefix(strings.ToLower(c.PublicURL), "https://") || !c.SecureCookies {
 		return fmt.Errorf("WECRATFS_PUBLIC_URL must use HTTPS and secure cookies must be enabled")
 	}
-	if strings.TrimSpace(c.S3Address) == "" || isLocalHost(s3Host(c.S3Address)) || strings.HasPrefix(strings.ToLower(c.S3Address), "http://") || c.S3AccessKey == "" || c.S3SecretKey == "" || c.S3Bucket == "" || !c.S3Secure {
-		return fmt.Errorf("a remote TLS-enabled S3-compatible endpoint and credentials are required")
-	}
-	if c.S3AutoCreateBucket {
-		return fmt.Errorf("S3_AUTO_CREATE_BUCKET must remain disabled in Netlify")
-	}
 	return nil
-}
-
-func redisHost(address string) string {
-	if parsed, err := url.Parse(address); err == nil && parsed.Host != "" {
-		return parsed.Hostname()
-	}
-	return address
-}
-
-func s3Host(address string) string {
-	if parsed, err := url.Parse(address); err == nil && parsed.Host != "" {
-		return parsed.Hostname()
-	}
-	return address
 }
 
 func isLocalHost(host string) bool {

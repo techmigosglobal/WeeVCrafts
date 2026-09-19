@@ -94,6 +94,24 @@ type ObjectStorageReader interface {
 	DeleteObject(ctx context.Context, objectKey string) error
 }
 
+// ObjectStorageUploadReceiver is implemented by same-origin storage adapters
+// that accept upload bytes through the application rather than a signed URL.
+type ObjectStorageUploadReceiver interface {
+	SaveObject(ctx context.Context, ownerID int64, objectKey, contentType string, body []byte) error
+}
+
+// ObjectStorageUploadCapacity lets an adapter advertise a stricter request
+// size ceiling imposed by a serverless platform.
+type ObjectStorageUploadCapacity interface {
+	MaxUploadBytes() int64
+}
+
+// ObjectStorageObjectReader permits first-party routes to serve stored images
+// directly; external providers can keep using short-lived redirect URLs.
+type ObjectStorageObjectReader interface {
+	ReadObject(ctx context.Context, objectKey string) ([]byte, ObjectInfo, error)
+}
+
 type UploadRequest struct {
 	ObjectKey   string
 	ContentType string

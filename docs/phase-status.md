@@ -1,6 +1,6 @@
 # WeCratfs phase status
 
-**Current status (2026-09-19):** The Netlify source now serves the real Go/PostgreSQL application through a shared runtime, with persistent auth and operational flows, Redis sessions, external S3-compatible product media, no seeded/demo business records, no startup migrations, and an explicitly unpaid cash-on-delivery checkout. The older `cmd/web` mock remains isolated for local visual testing only. Netlify deployment, live database/object-store rehearsals, browser smoke, and the 20-user staging load gate have not yet been run.
+**Current status (2026-09-19):** The Netlify source serves the real Go/PostgreSQL application through a shared runtime, with persistent auth and operational flows, no seeded/demo business records, and explicitly unpaid cash-on-delivery checkout. Netlify now uses managed PostgreSQL for business and ephemeral state plus capped product-image bytes; VPS/Compose retains Redis and S3-compatible media. Netlify-native migrations are synchronized with the Go migration set. Deployment, live database rehearsal, bootstrap of the owner's first Super Admin, browser smoke, and 10–20-user load evidence are pending. The older `cmd/web` mock remains isolated for local visual testing only.
 
 **Current gate:** Source implementation in progress verification; staging and production-release gates remain open.
 **Source PRD:** [`../Prd.md`](../Prd.md)  
@@ -31,8 +31,12 @@
   cash-on-delivery order flow, a one-time environment-only Super Admin bootstrap,
   and explicit migration command for non-serverless deployment steps.
 - Added a shared `internal/apphost` composition root for `cmd/res2` and Netlify
-  web/maintenance functions. Netlify receives real routes and sessions backed
-  by PostgreSQL/Redis/S3; the five-minute maintenance invocation is bounded.
+  web/maintenance functions. Netlify receives real routes with PostgreSQL-backed
+  state and media; the five-minute maintenance invocation is bounded.
+- Added migration `0022_netlify_runtime_state.sql`, Netlify-native migration
+  copies for migrations 0001–0022, PostgreSQL-backed Netlify session/rate-limit/
+  cache stores, and a 4 MiB-capped PostgreSQL product-media adapter. The VPS
+  composition remains on Redis/S3.
 - Added domain, application, and provider-neutral port contracts under
   `internal/domain/`, `internal/application/`, and `internal/ports/`.
 - Added JSON API, web template, health transport, responsive compiled stylesheet,
@@ -120,7 +124,7 @@
 - Redis, Meilisearch, S3-compatible storage, sessions, and payment providers
   are provider-neutral ports; their SDK/HTTP implementations stay in adapter
   packages and no provider type crosses domain/application boundaries.
-- Versioned migrations 0001–0021 create the current commerce, privacy,
+- Versioned migrations 0001–0022 create the current commerce, privacy,
   webhook, media, refund, account-action, and manual payment metadata model.
   Database schema changes run explicitly via `cmd/migrate`; Netlify function
   initialization never applies migrations. Manual checkout, inventory, media
@@ -159,9 +163,13 @@
   online payment services or payment webhooks. Cash-on-delivery is represented
   as unpaid and can be cancelled before seller fulfilment; payment collection
   is not claimed as automated or provider-verified.
-- Netlify prebuilt Go Functions require remote TLS PostgreSQL, TLS Redis, and an
-  existing TLS S3-compatible media bucket. `scripts/netlify-load-test.js` is a
-  20-VU staging gate; source-level pool limits are not load evidence.
+- Netlify prebuilt Go Functions require remote TLS PostgreSQL; Netlify-native
+  migrations apply before publish. PostgreSQL backs sessions, rate limits,
+  disposable cache, and product media (4 MiB/image maximum), with no Redis or
+  external S3 dependency. `scripts/netlify-load-test.js` is a 20-VU staging
+  gate; source-level pool limits are not load evidence. The linked Free plan's
+  fixed database capacity and hard monthly caps make this a validation target,
+  not a production availability/capacity guarantee.
 - Browser media uploads are verified against object-store size and content
   type before PostgreSQL marks them ready. Public catalog references resolve
   through a short-lived signed download URL; the Go server does not proxy file

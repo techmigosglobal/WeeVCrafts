@@ -310,6 +310,26 @@ func TestPolicyRouteIsReachableFromFooterContract(t *testing.T) {
 	}
 }
 
+func TestCommercePolicyPagesDescribeLiveManualPaymentWorkflows(t *testing.T) {
+	handler, err := NewHandler(applicationcatalog.NewService(repository{}))
+	if err != nil {
+		t.Fatalf("create handler: %v", err)
+	}
+	for _, test := range []struct{ path, want string }{
+		{path: "/returns", want: "request a return from your order details"},
+		{path: "/returns", want: "does not process refunds automatically"},
+		{path: "/contact", want: "sign in and open Support"},
+	} {
+		t.Run(test.path+"/"+test.want, func(t *testing.T) {
+			recorder := httptest.NewRecorder()
+			handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, test.path, nil))
+			if recorder.Code != http.StatusOK || !strings.Contains(recorder.Body.String(), test.want) {
+				t.Fatalf("unexpected policy response: status=%d body=%s", recorder.Code, recorder.Body.String())
+			}
+		})
+	}
+}
+
 func TestStaticAssetsArePubliclyCacheable(t *testing.T) {
 	handler, err := NewHandler(applicationcatalog.NewService(repository{}))
 	if err != nil {

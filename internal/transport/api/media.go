@@ -2,6 +2,8 @@ package api
 
 import (
 	"errors"
+	"io"
+	"mime"
 	"net/http"
 
 	applicationcommerce "github.com/wecratfs/commerce/internal/application/commerce"
@@ -28,6 +30,40 @@ func (h *Handler) MediaUploadURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusCreated, map[string]any{"data": media})
+}
+
+// MediaUpload receives small first-party uploads for Netlify's database-backed
+// media adapter. It intentionally requires both the session cookie and CSRF
+// token even though the upload URL itself contains an opaque object key.
+func (h *Handler) MediaUpload(w http.ResponseWriter, r *http.Request) {
+	session, ok := h.session(r)
+	if r.Method != http.MethodPut || !ok || h.media == nil || !h.validCSRF(r, session) {
+		writeError(w, http.StatusForbidden, "FORBIDDEN", "Authentication and CSRF validation are required.")
+		return
+	}
+	objectKey := r.URL.Query().Get("object_key")
+	contentType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+	if err != nil || objectKey == "" {
+		writeError(w, http.StatusBadRequest, "INVALID_UPLOAD", "The media upload request is invalid.")
+		return
+	}
+	maxBytes := h.media.MaxUploadBytes()
+	r.Body = http.MaxBytesReader(w, r.Body, maxBytes)
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		var maxErr *http.MaxBytesError
+		if errors.As(err, &maxErr) {
+			writeError(w, http.StatusRequestEntityTooLarge, "MEDIA_TOO_LARGE", "The image exceeds the upload size limit.")
+		} else {
+			writeError(w, http.StatusBadRequest, "INVALID_UPLOAD", "The media upload request is invalid.")
+		}
+		return
+	}
+	if err := h.media.UploadObject(r.Context(), session.UserID, objectKey, contentType, body); err != nil {
+		h.writeMediaError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *Handler) MediaFinalize(w http.ResponseWriter, r *http.Request) {

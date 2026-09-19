@@ -38,6 +38,7 @@ type Runtime struct {
 	Handler http.Handler
 	pool    *pgxpool.Pool
 	redis   *redisclient.Client
+	netlify bool
 
 	logger                *slog.Logger
 	productIndexProcessor *applicationcatalog.ProductIndexProcessor
@@ -61,7 +62,10 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger) (_ *Runtim
 	if logger == nil {
 		logger = slog.Default()
 	}
-	if cfg.DatabaseURL == "" || cfg.RedisAddress == "" || cfg.S3Address == "" || cfg.S3Bucket == "" {
+	if cfg.DatabaseURL == "" {
+		return nil, errors.New("database configuration is required")
+	}
+	if !cfg.NetlifyRuntime && (cfg.RedisAddress == "" || cfg.S3Address == "" || cfg.S3Bucket == "") {
 		return nil, errors.New("database, Redis, and object storage configuration are required")
 	}
 	if cfg.DatabaseMaxConns < 1 || cfg.DatabaseMaxConns > 20 {
@@ -79,7 +83,7 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger) (_ *Runtim
 	if err != nil {
 		return nil, fmt.Errorf("create PostgreSQL pool: %w", err)
 	}
-	runtime := &Runtime{pool: pool, logger: logger}
+	runtime := &Runtime{pool: pool, logger: logger, netlify: cfg.NetlifyRuntime}
 	defer func() {
 		if resultErr != nil {
 			runtime.Close()
@@ -89,19 +93,46 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger) (_ *Runtim
 		return nil, fmt.Errorf("connect to PostgreSQL: %w", err)
 	}
 
-	redisOptions, err := redisOptions(cfg.RedisAddress)
-	if err != nil {
-		return nil, fmt.Errorf("parse Redis configuration: %w", err)
+	var rateLimiter ports.RateLimiter
+	var searchCache interface {
+		ports.Cache
+		ports.CacheInvalidator
 	}
-	runtime.redis = redisclient.NewClient(redisOptions)
-	if err := runtime.redis.Ping(ctx).Err(); err != nil {
-		return nil, fmt.Errorf("connect to Redis: %w", err)
+	var sessionStore ports.SessionStore
+	var mediaStorage ports.ObjectStorage
+	if cfg.NetlifyRuntime {
+		rateLimiter = postgres.NewRateLimiter(pool)
+		searchCache = postgres.NewCache(pool)
+		sessionStore = postgres.NewSessionStore(pool)
+		mediaStorage = postgres.NewDatabaseMediaStorage(pool)
+	} else {
+		redisOptions, err := redisOptions(cfg.RedisAddress)
+		if err != nil {
+			return nil, fmt.Errorf("parse Redis configuration: %w", err)
+		}
+		runtime.redis = redisclient.NewClient(redisOptions)
+		if err := runtime.redis.Ping(ctx).Err(); err != nil {
+			return nil, fmt.Errorf("connect to Redis: %w", err)
+		}
+		rateLimiter = redisadapter.NewRateLimiter(runtime.redis)
+		searchCache = redisadapter.NewCache(runtime.redis)
+		sessionStore = redisadapter.NewSessionStore(runtime.redis)
+		s3Storage, err := storageadapter.NewS3(cfg.S3Address, cfg.S3AccessKey, cfg.S3SecretKey, cfg.S3Bucket, cfg.S3Secure)
+		if err != nil {
+			return nil, fmt.Errorf("configure S3-compatible media storage: %w", err)
+		}
+		if cfg.S3AutoCreateBucket {
+			if err := ensureBucket(ctx, s3Storage); err != nil {
+				return nil, fmt.Errorf("ensure media bucket: %w", err)
+			}
+		} else if err := s3Storage.VerifyBucket(ctx); err != nil {
+			return nil, fmt.Errorf("verify configured media bucket: %w", err)
+		}
+		mediaStorage = s3Storage
 	}
 
-	rateLimiter := redisadapter.NewRateLimiter(runtime.redis)
 	catalogService := applicationcatalog.NewService(postgres.NewProductRepository(pool))
 	searchRepository := postgres.NewProductSearchRepository(pool)
-	searchCache := redisadapter.NewCache(runtime.redis)
 	searchMetrics := metricsadapter.NewSearchMetrics()
 	var searchEngine ports.SearchEngine
 	var searchIndexer ports.SearchIndexer
@@ -113,7 +144,7 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger) (_ *Runtim
 	passwordHasher := applicationauth.NewArgon2idHasher()
 	userRepository := postgres.NewUserRepository(pool)
 	authService := applicationauth.NewService(userRepository, passwordHasher)
-	sessionService := applicationauth.NewSessionService(redisadapter.NewSessionStore(runtime.redis))
+	sessionService := applicationauth.NewSessionService(sessionStore)
 	var emailSender ports.EmailSender
 	if cfg.SMTPAddress != "" && cfg.SMTPFrom != "" {
 		emailSender = emailadapter.NewSMTP(cfg.SMTPAddress, cfg.SMTPUsername, cfg.SMTPPassword, cfg.SMTPFrom)
@@ -139,17 +170,6 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger) (_ *Runtim
 	cartService := applicationcommerce.NewCartService(commerceRepository)
 	orderService := applicationcommerce.NewOrderService(commerceRepository)
 	privacyService := applicationprivacy.NewService(postgres.NewPrivacyRepository(pool))
-	mediaStorage, err := storageadapter.NewS3(cfg.S3Address, cfg.S3AccessKey, cfg.S3SecretKey, cfg.S3Bucket, cfg.S3Secure)
-	if err != nil {
-		return nil, fmt.Errorf("configure S3-compatible media storage: %w", err)
-	}
-	if cfg.S3AutoCreateBucket {
-		if err := ensureBucket(ctx, mediaStorage); err != nil {
-			return nil, fmt.Errorf("ensure media bucket: %w", err)
-		}
-	} else if err := mediaStorage.VerifyBucket(ctx); err != nil {
-		return nil, fmt.Errorf("verify configured media bucket: %w", err)
-	}
 	runtime.mediaService = applicationcommerce.NewMediaService(mediaStorage, postgres.NewMediaRepository(pool))
 
 	webHandler, err := webTransport.NewFullHandlerWithPaymentConfigMediaRefundAndRecovery(
@@ -190,8 +210,10 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger) (_ *Runtim
 
 	healthProbes := map[string]healthTransport.Probe{
 		"postgresql": func(ctx context.Context) error { return postgres.Ping(ctx, pool) },
-		"redis":      func(ctx context.Context) error { return runtime.redis.Ping(ctx).Err() },
-		"s3":         tcpProbe(cfg.S3Address),
+	}
+	if runtime.redis != nil {
+		healthProbes["redis"] = func(ctx context.Context) error { return runtime.redis.Ping(ctx).Err() }
+		healthProbes["s3"] = tcpProbe(cfg.S3Address)
 	}
 	if cfg.MeiliAddress != "" {
 		healthProbes["meilisearch"] = tcpProbe(cfg.MeiliAddress)
@@ -223,6 +245,7 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger) (_ *Runtim
 	mux.HandleFunc("/api/v1/privacy/requests", apiHandler.PrivacyRequest)
 	mux.HandleFunc("/api/v1/privacy/delete", apiHandler.PrivacyDelete)
 	mux.HandleFunc("/api/v1/seller/products/media-url", apiHandler.MediaUploadURL)
+	mux.HandleFunc("/api/v1/seller/products/media-upload", apiHandler.MediaUpload)
 	mux.HandleFunc("/api/v1/seller/products/media-finalize", apiHandler.MediaFinalize)
 	mux.HandleFunc("/api/v1/seller/products/media-delete", apiHandler.MediaDelete)
 	mux.Handle("/", webHandler)
@@ -270,6 +293,13 @@ func (r *Runtime) RunMaintenance(ctx context.Context) error {
 		if err != nil {
 			failures = append(failures, fmt.Errorf("process product index outbox: %w", err))
 		}
+	}
+	if r.netlify {
+		stateContext, cancelState := context.WithTimeout(ctx, 3*time.Second)
+		if err := postgres.CleanupRuntimeState(stateContext, r.pool, 1000); err != nil {
+			failures = append(failures, fmt.Errorf("clean expired runtime state: %w", err))
+		}
+		cancelState()
 	}
 	reservationContext, cancelReservations := context.WithTimeout(ctx, 4*time.Second)
 	_, err := r.commerceRepository.ReleaseExpiredReservations(reservationContext, 100)

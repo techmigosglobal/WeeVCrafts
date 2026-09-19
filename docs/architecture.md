@@ -1,8 +1,9 @@
 # WeCratfs architecture boundary
 
 WeCratfs is a Go modular monolith. PostgreSQL owns authoritative business
-state; Redis stores shared sessions, rate limits, and disposable cache data;
-S3-compatible storage holds product media. Meilisearch is optional and
+state. On Netlify it also stores shared sessions, rate limits, disposable cache
+data, and small product images; on VPS/Compose, Redis stores ephemeral state
+and S3-compatible storage holds product media. Meilisearch is optional and
 rebuildable. The current MVP does not wire an online payment provider.
 
 ## Composition roots
@@ -30,9 +31,11 @@ Netlify Functions: web/maintenance ─┤
 Both the VPS process and Netlify functions use `internal/apphost`; there is no
 second, fixture-backed application in the deployed request path. The existing
 `cmd/web` mock is a separate local-only visual harness and is not imported by
-the Netlify build. Migrations run through `cmd/migrate` as an explicit
-deployment task, never on a function invocation. `cmd/bootstrap-admin` creates
-the first Super Admin once from environment-only credentials after migrations.
+the Netlify build. Netlify applies migrations from
+`netlify/database/migrations/` immediately before publishing; the synchronized
+copies of Go-embedded migration files are tested for equality. VPS/Compose
+migrations run through `cmd/migrate`. `cmd/bootstrap-admin` creates the first
+Super Admin once from environment-only credentials after the schema is ready.
 
 ## Transport and data rules
 
@@ -49,13 +52,14 @@ the first Super Admin once from environment-only credentials after migrations.
   payment method, and writes order history. Customer cancellation restores
   stock only before seller fulfilment begins. No payment is described as
   collected or verified by WeeVCrafts.
-- Sessions and authentication rate limiting use Redis so requests remain
-  coherent across warm and cold Netlify function instances. The Netlify config
-  rejects local DB/Redis/object-store defaults, requires TLS, and defaults to a
-  two-connection pool per function runtime; use a provider pooler for serverless
-  fan-out.
-- Product media uses presigned S3-compatible uploads; the function does not
-  proxy image bytes. Provision the bucket and browser CORS policy in advance.
+- Netlify sessions and authentication rate limiting use atomic PostgreSQL
+  operations, so requests remain coherent across warm and cold function
+  instances. Netlify requires remote TLS PostgreSQL and HTTPS secure cookies;
+  its per-runtime pool defaults to one connection. VPS/Compose uses Redis for
+  sessions, rate limiting, and disposable search cache.
+- Netlify product media is stored in PostgreSQL and capped at 4 MiB per image
+  to respect buffered function request limits. VPS/Compose uses presigned
+  S3-compatible uploads and does not proxy image bytes.
 - Optional Meilisearch is disposable discovery acceleration. Product records
   remain PostgreSQL-authoritative and search falls back to PostgreSQL.
 - Netlify's scheduled function runs bounded outbox, reservation, and media
@@ -69,4 +73,6 @@ the first Super Admin once from environment-only credentials after migrations.
 Run `bash scripts/check-architecture.sh`, `go test ./...`, and `go test -race
 ./...` from the repository root. PostgreSQL integration tests require a
 migrated disposable database. Staging browser, provider, and 20-user load
-evidence must be reported separately from source and unit-test results.
+evidence must be reported separately from source and unit-test results. Netlify
+Free's fixed one-compute-unit database and monthly caps are a short validation
+target, not a production capacity guarantee.

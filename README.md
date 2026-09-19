@@ -87,42 +87,47 @@ handled directly by the business and must not be represented as provider-verifie
 
 ## Netlify real-backend deployment
 
-Netlify builds two Go Functions: `web` serves the existing server-rendered
-storefront, API, and role workspaces; `maintenance` runs a bounded batch every
-five minutes. Neither function uses the local `cmd/web` preview, in-memory
-business state, automatic schema migrations, or seeded demo users.
-The schedule is activated on a published deploy; for an unpublished preview,
-invoke `maintenance` manually from the Netlify Functions UI when testing cleanup
-or search-index work.
+Netlify builds two Go Functions: `web` serves the server-rendered storefront,
+API, and role workspaces; `maintenance` runs bounded cleanup and search-index
+work every five minutes. Neither function uses the local `cmd/web` preview,
+in-memory business state, or seeded demo users. The production PostgreSQL
+database is the authoritative store for accounts, catalog, inventory, carts,
+orders, support, audit history, sessions, rate limits, and disposable cache
+entries. Product images are stored as PostgreSQL bytea for this MVP, with a
+4 MiB per-image limit. No Redis, S3 bucket, Netlify Blobs, or payment provider
+is required by the Netlify runtime. The VPS/Compose runtime continues to use
+Redis and S3-compatible storage.
 
-Provision a PostgreSQL database, a TLS Redis service, and a TLS S3-compatible
-bucket before deploying. Configure these Netlify environment variables:
+The Netlify Database integration applies the SQL files in
+`netlify/database/migrations/` before publishing a deploy. Those files mirror
+the Go-embedded migrations under `internal/adapters/postgres/migrations/`; a
+test fails if the copies diverge. Do not run `cmd/migrate` against the Netlify
+managed database. The schedule is activated on a published deploy; for an
+unpublished preview, invoke `maintenance` manually from the Netlify Functions
+UI when testing cleanup or search-index work.
+
+Configure these Netlify environment variables:
 
 | Variable | Required | Purpose |
 |---|---:|---|
 | `DATABASE_URL` | Yes | PostgreSQL connection string with `sslmode=require` or stricter; use the provider's pooled URL when available. |
-| `DATABASE_MAX_CONNS` | Yes | Per-function pool cap; start at `2` and keep the provider connection limit in mind. |
-| `REDIS_URL` | Yes | Shared `rediss://` endpoint for sessions and rate limits. |
+| `DATABASE_MAX_CONNS` | Optional | Per-function pool cap; defaults to `1` to limit serverless fan-out. |
 | `WECRATFS_PUBLIC_URL` | Yes | Canonical HTTPS site URL. |
-| `WECRATFS_SECURE_COOKIES` | Yes | Set `true`. |
-| `S3_ENDPOINT` | Yes | HTTPS endpoint for product media uploads and delivery. |
-| `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_BUCKET` | Yes | Credentials and pre-created bucket for media. |
-| `S3_SECURE` | Yes | Set `true`. |
+| `WECRATFS_SECURE_COOKIES` | Optional | Defaults to `true` in the Netlify runtime. |
 | `MEILI_ADDR`, `MEILI_API_KEY` | Optional | Search index acceleration; PostgreSQL search remains the fallback. |
 | `WECRATFS_SMTP_ADDR`, `WECRATFS_SMTP_USERNAME`, `WECRATFS_SMTP_PASSWORD`, `WECRATFS_SMTP_FROM` | Optional | Real account-recovery and verification email delivery. |
 
-Set each runtime secret's Netlify environment-variable scope to include
-Functions (all deploy contexts that will be tested). Netlify Blobs are not used
-for relational workflow records or Go media uploads.
-PostgreSQL is authoritative, Redis holds shared ephemeral session/rate-limit
-state, and S3-compatible object storage holds product images. Create the bucket
-and least-privilege keys before launch; grant the function `HeadBucket` access
-for startup checks. Configure bucket CORS to allow the deployed storefront
-origin to issue presigned `PUT` uploads with the `Content-Type` header. The
-production function does not create or migrate infrastructure during an
-invocation.
+Ensure the database connection variable is available to both the build-time
+migration integration and Functions runtime for the production deploy context.
+The app rejects local PostgreSQL URLs, connections without TLS, and non-HTTPS
+public URLs. Keep production and deploy-preview data separated by Netlify's
+database branches. The application does not seed sample products, accounts,
+or orders; customers register, vendors apply, and the first privileged
+administrator is bootstrapped explicitly.
 
-Apply schema changes once from a trusted environment before the deploy:
+Bootstrap the first real Super Admin once, after the first successful schema
+deploy, from a trusted environment with the production database URL and a
+unique password (16+ characters):
 
 ```sh
 DATABASE_URL='postgres://…?sslmode=require' go run ./cmd/migrate
@@ -133,18 +138,22 @@ DATABASE_URL='postgres://…?sslmode=require' \\
   go run ./cmd/bootstrap-admin
 ```
 
-The bootstrap command refuses to run once any Super Admin exists. Put the same
-runtime connection settings and service secrets in Netlify's encrypted
-environment-variable settings, then use `netlify deploy --build` for a staging
-preview. Do not put credentials in this repository or build output. A Netlify
-preview can be fully functional only after those external services are
-provisioned and reachable.
+The bootstrap command refuses to run once any Super Admin exists. Do not put
+the connection URL or administrator credentials in this repository, build
+output, or chat logs. Customers can register directly; vendors submit an
+application and an administrator must approve it before the vendor can publish
+products. Without configured SMTP, password-reset/verification email delivery
+is explicitly unavailable rather than simulated.
 
-The per-runtime PostgreSQL connection pool defaults to two connections to limit
-serverless fan-out. This is a configuration guard, not proof of a 20-user
-capacity guarantee: use the database provider's pooler and run the staging load
-gate with real infrastructure before inviting testers. With a staging-only
-customer account and k6 installed, run:
+The per-runtime PostgreSQL pool defaults to one connection. This limits
+per-instance fan-out; it is not a 20-user capacity guarantee. The linked
+Netlify Free database is constrained to one compute unit, 48 database compute
+units per billing period, and 5 GB each of writes, outbound bandwidth, and
+storage. It sleeps after inactivity and has a hard monthly credit cap, so it
+is suitable for short MVP validation, not a continuously available or
+production-scale promise. Check current account usage and plan limits before
+running extended tests or inviting users. For a short staging rehearsal with a
+test-only customer account and k6 installed, run:
 
 ```sh
 BASE_URL='https://your-staging-site.netlify.app' \\

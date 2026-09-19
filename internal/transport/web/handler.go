@@ -391,11 +391,11 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case strings.HasPrefix(r.URL.Path, "/brands/"):
 		h.brand(w, r, strings.TrimPrefix(r.URL.Path, "/brands/"))
 	case r.URL.Path == "/shipping":
-		h.policy(w, "Shipping", "Shipping details will be published with the first approved catalogue and fulfilment workflow.")
+		h.policy(w, "Shipping", "Shipping details: seller dispatch information appears during checkout and in order tracking when provided. If your order is missing an update, sign in and contact support.")
 	case r.URL.Path == "/returns":
-		h.policy(w, "Returns", "Returns details will be published before checkout is enabled. No order workflow is active in this preview.")
+		h.policy(w, "Returns", "You can request a return from your order details. Marketplace staff review each request. This MVP does not process refunds automatically; payment is settled offline.")
 	case r.URL.Path == "/contact":
-		h.policy(w, "Contact", "Contact details will be published when the seller and customer-care workflow is connected.")
+		h.policy(w, "Contact", "For order or account help, sign in and open Support to create a ticket. Support agents review requests in the support workspace.")
 	case strings.HasPrefix(r.URL.Path, "/category/"):
 		h.home(w, r, strings.TrimPrefix(r.URL.Path, "/category/"))
 	case strings.HasPrefix(r.URL.Path, "/products/"):

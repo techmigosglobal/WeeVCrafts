@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"reflect"
 	"testing"
@@ -34,7 +35,37 @@ func openIntegrationPool(t *testing.T) *pgxpool.Pool {
 	if err := pool.Ping(ctx); err != nil {
 		t.Fatalf("ping integration database: %v", err)
 	}
-	if err := ApplyMigrations(ctx, pool); err != nil {
+	if os.Getenv("NETLIFY_DATABASE_PREMIGRATED") == "1" {
+		rows, err := pool.Query(ctx, `SELECT version FROM schema_migrations ORDER BY version`)
+		if err != nil {
+			t.Fatalf("read pre-applied Netlify migrations: %v", err)
+		}
+		defer rows.Close()
+		entries, err := fs.ReadDir(migrationFiles, "migrations")
+		if err != nil {
+			t.Fatalf("read application migration list: %v", err)
+		}
+		applied := make(map[int64]bool, len(entries))
+		for rows.Next() {
+			var version int64
+			if err := rows.Scan(&version); err != nil {
+				t.Fatalf("scan pre-applied Netlify migration: %v", err)
+			}
+			applied[version] = true
+		}
+		if err := rows.Err(); err != nil {
+			t.Fatalf("read pre-applied Netlify migrations: %v", err)
+		}
+		for _, entry := range entries {
+			version, err := migrationVersion(entry.Name())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !applied[version] {
+				t.Fatalf("Netlify production database is missing migration %s", entry.Name())
+			}
+		}
+	} else if err := ApplyMigrations(ctx, pool); err != nil {
 		t.Fatalf("apply integration migrations: %v", err)
 	}
 	return pool

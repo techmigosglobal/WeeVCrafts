@@ -23,9 +23,35 @@ func TestValidateNetlifyAcceptsRemoteTLSConfiguration(t *testing.T) {
 	}
 }
 
+func TestValidateNetlifyNeedsOnlyManagedPostgres(t *testing.T) {
+	cfg := Config{
+		PublicURL:        "https://shop.example.net",
+		DatabaseURL:      "postgres://app:secret@pg.example.net:5432/store?sslmode=require",
+		DatabaseMaxConns: 1,
+		SecureCookies:    true,
+	}
+	if err := cfg.ValidateNetlify(); err != nil {
+		t.Fatalf("managed PostgreSQL config rejected without Redis or S3: %v", err)
+	}
+}
+
+func TestFromNetlifyEnvUsesManagedDatabaseURL(t *testing.T) {
+	t.Setenv("NETLIFY_DB_URL", "postgres://app:secret@pg.example.net:5432/store?sslmode=require")
+	t.Setenv("DATABASE_URL", "")
+	t.Setenv("NETLIFY", "false")
+	t.Setenv("WECRATFS_PUBLIC_URL", "https://shop.example.net")
+	cfg := FromNetlifyEnv()
+	if cfg.DatabaseURL == "" || cfg.PublicURL != "https://shop.example.net" || !cfg.SecureCookies {
+		t.Fatal("Netlify environment did not select the managed database and safe HTTPS defaults")
+	}
+	if err := cfg.ValidateNetlify(); err != nil {
+		t.Fatalf("managed database environment rejected: %v", err)
+	}
+}
+
 func TestFromEnvNetlifyDoesNotInjectLocalOrDemoDefaults(t *testing.T) {
 	for key, value := range map[string]string{
-		"NETLIFY": "true", "DATABASE_URL": "", "DATABASE_MAX_CONNS": "",
+		"NETLIFY": "true", "DATABASE_URL": "", "NETLIFY_DB_URL": "", "DATABASE_MAX_CONNS": "",
 		"REDIS_URL": "", "REDIS_ADDR": "", "MEILI_ADDR": "", "MEILI_API_KEY": "",
 		"S3_ENDPOINT": "", "S3_ADDR": "", "S3_ACCESS_KEY": "", "S3_SECRET_KEY": "",
 		"S3_BUCKET": "", "S3_AUTO_CREATE_BUCKET": "", "WECRATFS_PUBLIC_URL": "",
@@ -45,7 +71,7 @@ func TestFromEnvNetlifyDoesNotInjectLocalOrDemoDefaults(t *testing.T) {
 func TestFromNetlifyEnvDoesNotDependOnPlatformMarker(t *testing.T) {
 	t.Setenv("NETLIFY", "false")
 	for _, key := range []string{
-		"DATABASE_URL", "REDIS_URL", "REDIS_ADDR", "MEILI_ADDR", "S3_ENDPOINT", "S3_ADDR",
+		"DATABASE_URL", "NETLIFY_DB_URL", "REDIS_URL", "REDIS_ADDR", "MEILI_ADDR", "S3_ENDPOINT", "S3_ADDR",
 		"S3_ACCESS_KEY", "S3_SECRET_KEY", "S3_BUCKET", "S3_AUTO_CREATE_BUCKET",
 	} {
 		t.Setenv(key, "")
@@ -58,18 +84,12 @@ func TestFromNetlifyEnvDoesNotDependOnPlatformMarker(t *testing.T) {
 
 func TestValidateNetlifyRejectsLocalOrInsecureDependencies(t *testing.T) {
 	tests := map[string]func(*Config){
-		"missing database":               func(c *Config) { c.DatabaseURL = "" },
-		"local database":                 func(c *Config) { c.DatabaseURL = "postgres://app:secret@localhost:5432/store?sslmode=require" },
-		"database without explicit TLS":  func(c *Config) { c.DatabaseURL = "postgres://app:secret@pg.example.net:5432/store" },
-		"missing redis":                  func(c *Config) { c.RedisAddress = "" },
-		"local redis":                    func(c *Config) { c.RedisAddress = "redis://localhost:6379" },
-		"plaintext remote redis":         func(c *Config) { c.RedisAddress = "redis://redis.example.net:6379" },
-		"insecure public URL":            func(c *Config) { c.PublicURL = "http://shop.example.net" },
-		"insecure cookie":                func(c *Config) { c.SecureCookies = false },
-		"local object storage":           func(c *Config) { c.S3Address = "http://127.0.0.1:9000" },
-		"missing media credentials":      func(c *Config) { c.S3SecretKey = "" },
-		"implicit media bucket creation": func(c *Config) { c.S3AutoCreateBucket = true },
-		"unbounded connection pool":      func(c *Config) { c.DatabaseMaxConns = 21 },
+		"missing database":              func(c *Config) { c.DatabaseURL = "" },
+		"local database":                func(c *Config) { c.DatabaseURL = "postgres://app:secret@localhost:5432/store?sslmode=require" },
+		"database without explicit TLS": func(c *Config) { c.DatabaseURL = "postgres://app:secret@pg.example.net:5432/store" },
+		"insecure public URL":           func(c *Config) { c.PublicURL = "http://shop.example.net" },
+		"insecure cookie":               func(c *Config) { c.SecureCookies = false },
+		"unbounded connection pool":     func(c *Config) { c.DatabaseMaxConns = 21 },
 	}
 	for name, mutate := range tests {
 		t.Run(name, func(t *testing.T) {
