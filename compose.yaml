@@ -1,4 +1,14 @@
 services:
+  migrate:
+    build: .
+    entrypoint: ["/usr/local/bin/wecratfs-migrate"]
+    environment:
+      DATABASE_URL: postgres://wecratfs:wecratfs@postgres:5432/wecratfs?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
   app:
     build: .
     ports:
@@ -9,11 +19,14 @@ services:
       REDIS_ADDR: redis:6379
       MEILI_ADDR: meilisearch:7700
       S3_ADDR: minio:9000
+      S3_AUTO_CREATE_BUCKET: "true"
     depends_on:
+      migrate:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
       meilisearch:
         condition: service_started
       minio:
@@ -44,6 +57,11 @@ services:
     image: redis:7-alpine
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   meilisearch:
     image: getmeili/meilisearch:v1.12.8

@@ -22,18 +22,23 @@ import (
 )
 
 type Handler struct {
-	catalog       *applicationcatalog.Service
-	search        *applicationcatalog.SearchService
-	auth          *applicationauth.Service
-	sessions      *applicationauth.SessionService
-	cart          *applicationcommerce.CartService
-	orders        *applicationcommerce.OrderService
-	privacy       *applicationprivacy.Service
-	media         *applicationcommerce.MediaService
-	payment       *applicationpayment.OrderService
-	refunds       *applicationpayment.RefundService
-	recovery      *applicationauth.RecoveryService
-	secureCookies bool
+	catalog        *applicationcatalog.Service
+	search         *applicationcatalog.SearchService
+	auth           *applicationauth.Service
+	sessions       *applicationauth.SessionService
+	cart           *applicationcommerce.CartService
+	orders         *applicationcommerce.OrderService
+	privacy        *applicationprivacy.Service
+	media          *applicationcommerce.MediaService
+	payment        *applicationpayment.OrderService
+	refunds        *applicationpayment.RefundService
+	recovery       *applicationauth.RecoveryService
+	secureCookies  bool
+	manualCheckout bool
+}
+
+func (h *Handler) SetManualCheckout(enabled bool) {
+	h.manualCheckout = enabled
 }
 
 func NewHandler(catalogService *applicationcatalog.Service) *Handler {
@@ -259,7 +264,13 @@ func (h *Handler) Checkout(w http.ResponseWriter, r *http.Request) {
 	if headerKey := strings.TrimSpace(r.Header.Get("Idempotency-Key")); headerKey != "" {
 		input.IdempotencyKey = headerKey
 	}
-	order, err := h.orders.Create(r.Context(), session.UserID, input.CartID, input.IdempotencyKey, input.Address)
+	var order domaincommerce.Order
+	var err error
+	if h.manualCheckout {
+		order, err = h.orders.CreateManual(r.Context(), session.UserID, input.CartID, input.IdempotencyKey, input.Address)
+	} else {
+		order, err = h.orders.Create(r.Context(), session.UserID, input.CartID, input.IdempotencyKey, input.Address)
+	}
 	if err != nil {
 		if errors.Is(err, ports.ErrIdempotencyConflict) {
 			writeError(w, http.StatusConflict, "IDEMPOTENCY_CONFLICT", "This idempotency key was already used for a different checkout request.")

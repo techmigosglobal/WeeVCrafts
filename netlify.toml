@@ -1,23 +1,23 @@
-# Netlify configuration for the WeeVCrafts UI-first preview.
-#
-# The preview is a compiled Go binary (embedded templ pages, CSS, JS, and
-# images), so Netlify Functions with the Lambda-compatible Go runtime serves
-# every route through a single catch-all rewrite. See
-# netlify/functions/web/main.go for the net/http adapter.
+# Production Netlify adapter for the real Go/PostgreSQL marketplace backend.
+# Runtime state lives in PostgreSQL, Redis, and S3-compatible object storage;
+# function memory and the static publish directory are never data stores.
 
 [build]
   base = "."
   command = "./scripts/build-netlify-function.sh"
   functions = "netlify/functions-dist"
-  publish = "netlify/publish"
+  publish = "netlify/site"
 
 [build.environment]
   GO_VERSION = "1.26"
   GO_IMPORT_PATH = "github.com/wecratfs/commerce"
-  NODE_VERSION = "22"
 
-# Every request — pages, /assets/*, /ui/* HTMX targets — is handled by the Go
-# function. Asset caching headers are set by the handler itself.
+# Reconcile the product-search outbox, expired inventory reservations, and
+# abandoned product-media uploads in bounded batches. No resident worker runs.
+[functions."maintenance"]
+  schedule = "*/5 * * * *"
+
+# Public pages, assets, and API endpoints are server-rendered by the Go app.
 [[redirects]]
   from = "/*"
   to = "/.netlify/functions/web"

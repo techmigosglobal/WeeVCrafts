@@ -82,6 +82,7 @@ func newCommerceFixture(t *testing.T, pool *pgxpool.Pool, userCount, stock int) 
 		_, _ = pool.Exec(cleanupContext, `DELETE FROM outbox_events WHERE aggregate_type = 'Order' AND aggregate_id IN (SELECT order_number FROM orders WHERE user_id = ANY($1))`, userIDs)
 		_, _ = pool.Exec(cleanupContext, `DELETE FROM orders WHERE user_id = ANY($1)`, userIDs)
 		_, _ = pool.Exec(cleanupContext, `DELETE FROM carts WHERE user_id = ANY($1)`, userIDs)
+		_, _ = pool.Exec(cleanupContext, `DELETE FROM inventory_transactions WHERE variant_id = $1`, variantID)
 		_, _ = pool.Exec(cleanupContext, `DELETE FROM users WHERE id = ANY($1)`, userIDs)
 		_, _ = pool.Exec(cleanupContext, `DELETE FROM inventory_stock WHERE variant_id = $1`, variantID)
 		_, _ = pool.Exec(cleanupContext, `DELETE FROM products WHERE id = $1`, productID)
@@ -133,6 +134,85 @@ func TestInventoryReservationConcurrencyCheckpoint(t *testing.T) {
 	}
 	if available != 0 || reserved != 10 {
 		t.Fatalf("inventory oversold or reservation count incorrect: available=%d reserved=%d", available, reserved)
+	}
+}
+
+func TestManualPaymentOrderPersistsAndEntersSellerFulfillment(t *testing.T) {
+	pool := openIntegrationPool(t)
+	fixture := newCommerceFixture(t, pool, 1, 3)
+	repository := NewCommerceRepository(pool)
+	address := domaincommerce.AddressInput{RecipientName: "Fixture", Line1: "1 Test Lane", City: "Pune", State: "MH", PostalCode: "411001", CountryCode: "IN"}
+	order, err := repository.CreateManualOrder(context.Background(), fixture.userIDs[0], fixture.cartIDs[0], "manual-checkout-key-12345", address)
+	if err != nil {
+		t.Fatalf("create manual order: %v", err)
+	}
+	if order.Status != "processing" || order.PaymentMethod != "cash_on_delivery" {
+		t.Fatalf("manual order state = status %q, payment method %q", order.Status, order.PaymentMethod)
+	}
+	var available, reserved, committedReservations, paymentAttempts int
+	if err := pool.QueryRow(context.Background(), `SELECT available_quantity, reserved_quantity FROM inventory_stock WHERE variant_id = $1`, fixture.variantID).Scan(&available, &reserved); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(context.Background(), `SELECT COUNT(*) FROM inventory_reservations WHERE order_id = $1 AND status = 'committed'`, order.ID).Scan(&committedReservations); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(context.Background(), `SELECT COUNT(*) FROM payment_attempts WHERE order_id = $1`, order.ID).Scan(&paymentAttempts); err != nil {
+		t.Fatal(err)
+	}
+	if available != 2 || reserved != 0 || committedReservations != 1 || paymentAttempts != 0 {
+		t.Fatalf("stock/payment state = available:%d reserved:%d committed:%d payment-attempts:%d", available, reserved, committedReservations, paymentAttempts)
+	}
+	detail, err := repository.GetOrder(context.Background(), fixture.userIDs[0], order.OrderNumber)
+	if err != nil {
+		t.Fatalf("read manual order: %v", err)
+	}
+	if detail.PaymentStatus != "due_on_delivery" || detail.PaymentMethod != "cash_on_delivery" {
+		t.Fatalf("manual payment view = method %q, status %q", detail.PaymentMethod, detail.PaymentStatus)
+	}
+	sellerOrders, err := repository.ListSellerOrders(context.Background(), fixture.ownerID)
+	if err != nil {
+		t.Fatalf("list seller orders: %v", err)
+	}
+	if len(sellerOrders) != 1 || sellerOrders[0].PaymentStatus != "due_on_delivery" || sellerOrders[0].OrderNumber != order.OrderNumber {
+		t.Fatalf("seller order projection did not include the unpaid order: %#v", sellerOrders)
+	}
+	if err := repository.UpdateSellerFulfillment(context.Background(), fixture.ownerID, sellerOrders[0].SellerID, order.OrderNumber, "processing", "", "", "COD order accepted"); err != nil {
+		t.Fatalf("start seller fulfilment: %v", err)
+	}
+	detail, err = repository.GetOrder(context.Background(), fixture.userIDs[0], order.OrderNumber)
+	if err != nil || len(detail.Fulfillments) != 1 || detail.Fulfillments[0].Status != "processing" {
+		t.Fatalf("customer fulfilment projection = %#v, err=%v", detail.Fulfillments, err)
+	}
+}
+
+func TestCustomerCanCancelManualOrderBeforeSellerFulfillment(t *testing.T) {
+	pool := openIntegrationPool(t)
+	fixture := newCommerceFixture(t, pool, 1, 1)
+	repository := NewCommerceRepository(pool)
+	address := domaincommerce.AddressInput{RecipientName: "Fixture", Line1: "1 Test Lane", City: "Pune", State: "MH", PostalCode: "411001", CountryCode: "IN"}
+	order, err := repository.CreateManualOrder(context.Background(), fixture.userIDs[0], fixture.cartIDs[0], "manual-cancel-checkout-key", address)
+	if err != nil {
+		t.Fatalf("create manual order: %v", err)
+	}
+	if err := repository.CancelOrder(context.Background(), fixture.userIDs[0], order.OrderNumber); err != nil {
+		t.Fatalf("cancel before seller fulfilment: %v", err)
+	}
+	var status, reservationStatus string
+	var available, reserved int
+	if err := pool.QueryRow(context.Background(), `SELECT status FROM orders WHERE id = $1`, order.ID).Scan(&status); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(context.Background(), `SELECT status FROM inventory_reservations WHERE order_id = $1`, order.ID).Scan(&reservationStatus); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(context.Background(), `SELECT available_quantity, reserved_quantity FROM inventory_stock WHERE variant_id = $1`, fixture.variantID).Scan(&available, &reserved); err != nil {
+		t.Fatal(err)
+	}
+	if status != "cancelled" || reservationStatus != "released" || available != 1 || reserved != 0 {
+		t.Fatalf("cancel result order=%q reservation=%q available=%d reserved=%d", status, reservationStatus, available, reserved)
+	}
+	if err := repository.CancelOrder(context.Background(), fixture.userIDs[0], order.OrderNumber); !errors.Is(err, ports.ErrInvalidState) {
+		t.Fatalf("second cancel error = %v, want invalid state", err)
 	}
 }
 

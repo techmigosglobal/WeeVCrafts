@@ -1,9 +1,8 @@
 # WeCratfs phase status
 
-**Current status:** The locally verifiable V1 frontend is complete for the customer, seller, marketplace-admin, super-admin, and support role previews. It runs with mock data, is responsive, and is interactive without a backend; live integrations, staging, legal, and production gates remain separate follow-up work.
+**Current status (2026-09-19):** The Netlify source now serves the real Go/PostgreSQL application through a shared runtime, with persistent auth and operational flows, Redis sessions, external S3-compatible product media, no seeded/demo business records, no startup migrations, and an explicitly unpaid cash-on-delivery checkout. The older `cmd/web` mock remains isolated for local visual testing only. Netlify deployment, live database/object-store rehearsals, browser smoke, and the 20-user staging load gate have not yet been run.
 
-**Current gate:** Local frontend V1 — complete; full production-release gates remain open
-**Completion estimate:** 100% of the requested locally verifiable frontend scope; approximately 45% of the broader production-release gate set.
+**Current gate:** Source implementation in progress verification; staging and production-release gates remain open.
 **Source PRD:** [`../Prd.md`](../Prd.md)  
 **Execution plan:** [`../Phases/README.md`](../Phases/README.md)
 
@@ -28,6 +27,12 @@
 - Added live seller onboarding state, marketplace seller approval/suspension,
   role-scoped audit-log reads, and Super Admin operational role management;
   privileged changes require a reason and receive request-aware audit records.
+- Added migration `0021_manual_payment_orders.sql`, a transactionally committed
+  cash-on-delivery order flow, a one-time environment-only Super Admin bootstrap,
+  and explicit migration command for non-serverless deployment steps.
+- Added a shared `internal/apphost` composition root for `cmd/res2` and Netlify
+  web/maintenance functions. Netlify receives real routes and sessions backed
+  by PostgreSQL/Redis/S3; the five-minute maintenance invocation is bounded.
 - Added domain, application, and provider-neutral port contracts under
   `internal/domain/`, `internal/application/`, and `internal/ports/`.
 - Added JSON API, web template, health transport, responsive compiled stylesheet,
@@ -115,9 +120,11 @@
 - Redis, Meilisearch, S3-compatible storage, sessions, and payment providers
   are provider-neutral ports; their SDK/HTTP implementations stay in adapter
   packages and no provider type crosses domain/application boundaries.
-- Versioned migrations 0001–0020 create the current commerce, privacy,
-  webhook, media, refund, and account-action metadata model. Checkout, payment, media
-  lifecycle, and processed-refund transitions use
+- Versioned migrations 0001–0021 create the current commerce, privacy,
+  webhook, media, refund, account-action, and manual payment metadata model.
+  Database schema changes run explicitly via `cmd/migrate`; Netlify function
+  initialization never applies migrations. Manual checkout, inventory, media
+  lifecycle, and role changes use
   PostgreSQL transactions and row locks.
 - `/api/v1` is JSON-only and template-free. HTML is server-rendered first;
   HTMX/Alpine remain progressive enhancements and are never business state.
@@ -139,7 +146,7 @@
 - Search sort/filter/pagination state is validated in the application service;
   Meilisearch is used only for discovery and PostgreSQL remains the hydrated
   source of truth, including when the index is unavailable.
-- Payment webhooks accept only supported Razorpay-shaped event types after raw
+- Payment webhook application/provider code accepts only supported Razorpay-shaped event types after raw
   body verification; capture settlement, payment status, order status,
   reservation commitment, audit, and processed-event recording remain in one
   PostgreSQL transaction.
@@ -148,6 +155,13 @@
   pending/processed/failed state, and marks the order refunded only after a
   validated provider response; provider-pending results remain for a future
   reconciliation worker.
+- The current Netlify/VPS application composition deliberately does not wire
+  online payment services or payment webhooks. Cash-on-delivery is represented
+  as unpaid and can be cancelled before seller fulfilment; payment collection
+  is not claimed as automated or provider-verified.
+- Netlify prebuilt Go Functions require remote TLS PostgreSQL, TLS Redis, and an
+  existing TLS S3-compatible media bucket. `scripts/netlify-load-test.js` is a
+  20-VU staging gate; source-level pool limits are not load evidence.
 - Browser media uploads are verified against object-store size and content
   type before PostgreSQL marks them ready. Public catalog references resolve
   through a short-lived signed download URL; the Go server does not proxy file

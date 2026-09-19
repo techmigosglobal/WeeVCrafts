@@ -15,8 +15,31 @@ import (
 	applicationcommerce "github.com/wecratfs/commerce/internal/application/commerce"
 	domain "github.com/wecratfs/commerce/internal/domain/catalog"
 	domaincommerce "github.com/wecratfs/commerce/internal/domain/commerce"
+	domainidentity "github.com/wecratfs/commerce/internal/domain/identity"
 	"github.com/wecratfs/commerce/internal/ports"
 )
+
+func TestDefaultWorkspaceUsesPersistedAccountRoles(t *testing.T) {
+	tests := []struct {
+		name  string
+		roles []domainidentity.Role
+		want  string
+	}{
+		{name: "customer", roles: []domainidentity.Role{domainidentity.RoleCustomer}, want: "/account/sessions"},
+		{name: "seller", roles: []domainidentity.Role{domainidentity.RoleSellerOwner}, want: "/seller"},
+		{name: "support", roles: []domainidentity.Role{domainidentity.RoleSupportAgent}, want: "/support"},
+		{name: "finance", roles: []domainidentity.Role{domainidentity.RoleFinanceOperator}, want: "/finance"},
+		{name: "marketplace admin", roles: []domainidentity.Role{domainidentity.RoleMarketplaceAdmin}, want: "/admin"},
+		{name: "admin takes precedence", roles: []domainidentity.Role{domainidentity.RoleSellerOwner, domainidentity.RoleSuperAdmin}, want: "/admin"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if got := defaultWorkspace(test.roles); got != test.want {
+				t.Fatalf("defaultWorkspace(%v) = %q, want %q", test.roles, got, test.want)
+			}
+		})
+	}
+}
 
 type repository struct {
 	products []domain.Product
@@ -238,6 +261,39 @@ func TestLiveCustomerOrderStatusRoutesUseServerState(t *testing.T) {
 				t.Fatalf("unexpected order status response: status=%d want=%q body=%s", recorder.Code, test.want, recorder.Body.String())
 			}
 		})
+	}
+}
+
+func TestNetlifyManualCheckoutDisclosesOfflinePaymentAndTotal(t *testing.T) {
+	session := ports.SessionRecord{ID: "checkout-session", UserID: 42, CSRFToken: "checkout-csrf", ExpiresAt: time.Now().Add(time.Hour)}
+	cartRepository := &webCartRepository{cart: domaincommerce.Cart{
+		ID: 7, ItemCount: 2, SubtotalCents: 9900,
+		Items: []domaincommerce.CartItem{{VariantID: 3, ProductName: "Handmade bowl", Quantity: 2, UnitPriceCents: 4950, LineTotalCents: 9900}},
+	}}
+	handler, err := NewFullHandler(
+		applicationcatalog.NewService(repository{}), nil,
+		applicationauth.NewSessionService(&webSessionStore{session: session}), nil,
+		applicationcommerce.NewCartService(cartRepository),
+		applicationcommerce.NewOrderService(webOrderRepository{}), nil, nil, false,
+	)
+	if err != nil {
+		t.Fatalf("create checkout handler: %v", err)
+	}
+	handler.SetManualCheckout(true)
+	request := httptest.NewRequest(http.MethodGet, "/checkout", nil)
+	request.AddCookie(&http.Cookie{Name: "wecratfs_session", Value: session.ID})
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("checkout status = %d, want 200: %s", recorder.Code, recorder.Body.String())
+	}
+	for _, expected := range []string{"Offline payment on delivery", "No online payment is collected", "₹99.00", "₹198.00", "Place order"} {
+		if !strings.Contains(recorder.Body.String(), expected) {
+			t.Errorf("manual checkout response does not contain %q", expected)
+		}
+	}
+	if strings.Contains(recorder.Body.String(), "configured online provider") {
+		t.Fatal("manual-payment checkout disclosed a nonexistent online provider")
 	}
 }
 

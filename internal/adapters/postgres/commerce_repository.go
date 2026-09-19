@@ -451,15 +451,28 @@ func (r *CommerceRepository) ListWishlist(ctx context.Context, userID int64) ([]
 }
 
 func (r *CommerceRepository) CreateOrder(ctx context.Context, userID, cartID int64, idempotencyKey string, address domaincommerce.AddressInput) (domaincommerce.Order, error) {
+	return r.createOrder(ctx, userID, cartID, idempotencyKey, address, false)
+}
+
+func (r *CommerceRepository) CreateManualOrder(ctx context.Context, userID, cartID int64, idempotencyKey string, address domaincommerce.AddressInput) (domaincommerce.Order, error) {
+	return r.createOrder(ctx, userID, cartID, idempotencyKey, address, true)
+}
+
+func (r *CommerceRepository) createOrder(ctx context.Context, userID, cartID int64, idempotencyKey string, address domaincommerce.AddressInput, manualPayment bool) (domaincommerce.Order, error) {
 	var order domaincommerce.Order
 	addressJSON, err := json.Marshal(address)
 	if err != nil {
 		return order, err
 	}
 	requestHash := checkoutRequestHash(cartID, addressJSON)
+	status, paymentMethod, historyReason := "pending_payment", "gateway", "checkout created"
+	if manualPayment {
+		status, paymentMethod, historyReason = "processing", "cash_on_delivery", "cash-on-delivery order placed; payment due on delivery"
+		requestHash = checkoutRequestHashMode(cartID, addressJSON, paymentMethod)
+	}
 	err = WithinTransaction(ctx, r.pool, func(transactionContext context.Context, tx pgx.Tx) error {
 		var existingHash *string
-		if err := tx.QueryRow(transactionContext, `SELECT id, order_number, status, currency, subtotal_cents, shipping_cents, total_cents, created_at, idempotency_request_hash FROM orders WHERE idempotency_scope = $1 AND idempotency_key = $2`, fmt.Sprintf("checkout:%d", userID), idempotencyKey).Scan(&order.ID, &order.OrderNumber, &order.Status, &order.Currency, &order.SubtotalCents, &order.ShippingCents, &order.TotalCents, &order.CreatedAt, &existingHash); err == nil {
+		if err := tx.QueryRow(transactionContext, `SELECT id, order_number, status, payment_method, currency, subtotal_cents, shipping_cents, total_cents, created_at, idempotency_request_hash FROM orders WHERE idempotency_scope = $1 AND idempotency_key = $2`, fmt.Sprintf("checkout:%d", userID), idempotencyKey).Scan(&order.ID, &order.OrderNumber, &order.Status, &order.PaymentMethod, &order.Currency, &order.SubtotalCents, &order.ShippingCents, &order.TotalCents, &order.CreatedAt, &existingHash); err == nil {
 			if existingHash != nil && *existingHash != requestHash {
 				return ports.ErrIdempotencyConflict
 			}
@@ -470,7 +483,7 @@ func (r *CommerceRepository) CreateOrder(ctx context.Context, userID, cartID int
 		var cartOwner int64
 		if err := tx.QueryRow(transactionContext, `SELECT user_id FROM carts WHERE id = $1 AND status = 'active' AND expires_at > NOW() FOR UPDATE`, cartID).Scan(&cartOwner); err != nil || cartOwner != userID {
 			var existingHash *string
-			if existingErr := tx.QueryRow(transactionContext, `SELECT id, order_number, status, currency, subtotal_cents, shipping_cents, total_cents, created_at, idempotency_request_hash FROM orders WHERE idempotency_scope = $1 AND idempotency_key = $2`, fmt.Sprintf("checkout:%d", userID), idempotencyKey).Scan(&order.ID, &order.OrderNumber, &order.Status, &order.Currency, &order.SubtotalCents, &order.ShippingCents, &order.TotalCents, &order.CreatedAt, &existingHash); existingErr == nil {
+			if existingErr := tx.QueryRow(transactionContext, `SELECT id, order_number, status, payment_method, currency, subtotal_cents, shipping_cents, total_cents, created_at, idempotency_request_hash FROM orders WHERE idempotency_scope = $1 AND idempotency_key = $2`, fmt.Sprintf("checkout:%d", userID), idempotencyKey).Scan(&order.ID, &order.OrderNumber, &order.Status, &order.PaymentMethod, &order.Currency, &order.SubtotalCents, &order.ShippingCents, &order.TotalCents, &order.CreatedAt, &existingHash); existingErr == nil {
 				if existingHash != nil && *existingHash != requestHash {
 					return ports.ErrIdempotencyConflict
 				}
@@ -514,10 +527,10 @@ func (r *CommerceRepository) CreateOrder(ctx context.Context, userID, cartID int
 			shipping = 9900
 		}
 		total := subtotal + shipping
-		err = tx.QueryRow(transactionContext, `INSERT INTO orders (order_number, user_id, status, subtotal_cents, shipping_cents, total_cents, address_snapshot, idempotency_scope, idempotency_key, idempotency_request_hash) VALUES ($1, $2, 'pending_payment', $3, $4, $5, $6, $7, $8, $9) ON CONFLICT (idempotency_scope, idempotency_key) DO NOTHING RETURNING id, order_number, status, currency, subtotal_cents, shipping_cents, total_cents, created_at`, orderNumber, userID, subtotal, shipping, total, addressJSON, fmt.Sprintf("checkout:%d", userID), idempotencyKey, requestHash).Scan(&order.ID, &order.OrderNumber, &order.Status, &order.Currency, &order.SubtotalCents, &order.ShippingCents, &order.TotalCents, &order.CreatedAt)
+		err = tx.QueryRow(transactionContext, `INSERT INTO orders (order_number, user_id, status, payment_method, subtotal_cents, shipping_cents, total_cents, address_snapshot, idempotency_scope, idempotency_key, idempotency_request_hash) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) ON CONFLICT (idempotency_scope, idempotency_key) DO NOTHING RETURNING id, order_number, status, payment_method, currency, subtotal_cents, shipping_cents, total_cents, created_at`, orderNumber, userID, status, paymentMethod, subtotal, shipping, total, addressJSON, fmt.Sprintf("checkout:%d", userID), idempotencyKey, requestHash).Scan(&order.ID, &order.OrderNumber, &order.Status, &order.PaymentMethod, &order.Currency, &order.SubtotalCents, &order.ShippingCents, &order.TotalCents, &order.CreatedAt)
 		if errors.Is(err, pgx.ErrNoRows) {
 			var existingHash *string
-			if selectErr := tx.QueryRow(transactionContext, `SELECT id, order_number, status, currency, subtotal_cents, shipping_cents, total_cents, created_at, idempotency_request_hash FROM orders WHERE idempotency_scope = $1 AND idempotency_key = $2`, fmt.Sprintf("checkout:%d", userID), idempotencyKey).Scan(&order.ID, &order.OrderNumber, &order.Status, &order.Currency, &order.SubtotalCents, &order.ShippingCents, &order.TotalCents, &order.CreatedAt, &existingHash); selectErr != nil {
+			if selectErr := tx.QueryRow(transactionContext, `SELECT id, order_number, status, payment_method, currency, subtotal_cents, shipping_cents, total_cents, created_at, idempotency_request_hash FROM orders WHERE idempotency_scope = $1 AND idempotency_key = $2`, fmt.Sprintf("checkout:%d", userID), idempotencyKey).Scan(&order.ID, &order.OrderNumber, &order.Status, &order.PaymentMethod, &order.Currency, &order.SubtotalCents, &order.ShippingCents, &order.TotalCents, &order.CreatedAt, &existingHash); selectErr != nil {
 				return selectErr
 			} else if existingHash != nil && *existingHash != requestHash {
 				return ports.ErrIdempotencyConflict
@@ -542,13 +555,20 @@ func (r *CommerceRepository) CreateOrder(ctx context.Context, userID, cartID int
 				return err
 			}
 		}
-		if _, err := tx.Exec(transactionContext, `INSERT INTO payment_attempts (order_id, provider, status, amount_cents) VALUES ($1, 'razorpay', 'created', $2)`, order.ID, order.TotalCents); err != nil {
+		if manualPayment {
+			if _, err := tx.Exec(transactionContext, `UPDATE inventory_stock i SET reserved_quantity = reserved_quantity - ri.quantity, updated_at = NOW() FROM inventory_reservation_items ri WHERE ri.reservation_id = $1 AND i.variant_id = ri.variant_id`, reservationID); err != nil {
+				return err
+			}
+			if _, err := tx.Exec(transactionContext, `UPDATE inventory_reservations SET status = 'committed', updated_at = NOW() WHERE id = $1`, reservationID); err != nil {
+				return err
+			}
+		} else if _, err := tx.Exec(transactionContext, `INSERT INTO payment_attempts (order_id, provider, status, amount_cents) VALUES ($1, 'razorpay', 'created', $2)`, order.ID, order.TotalCents); err != nil {
 			return err
 		}
-		if _, err := tx.Exec(transactionContext, `INSERT INTO order_status_history (order_id, to_status, actor_id, reason) VALUES ($1, 'pending_payment', $2, 'checkout created')`, order.ID, userID); err != nil {
+		if _, err := tx.Exec(transactionContext, `INSERT INTO order_status_history (order_id, to_status, actor_id, reason) VALUES ($1, $2, $3, $4)`, order.ID, status, userID, historyReason); err != nil {
 			return err
 		}
-		payload, _ := json.Marshal(map[string]any{"order_id": order.ID, "order_number": order.OrderNumber, "status": order.Status})
+		payload, _ := json.Marshal(map[string]any{"order_id": order.ID, "order_number": order.OrderNumber, "status": order.Status, "payment_method": paymentMethod})
 		_, err = tx.Exec(transactionContext, `INSERT INTO outbox_events (event_type, aggregate_type, aggregate_id, payload) VALUES ('OrderCreated', 'Order', $1, $2)`, order.OrderNumber, payload)
 		if err != nil {
 			return err
@@ -560,7 +580,7 @@ func (r *CommerceRepository) CreateOrder(ctx context.Context, userID, cartID int
 }
 
 func (r *CommerceRepository) ListOrders(ctx context.Context, userID int64, limit int) ([]domaincommerce.Order, error) {
-	rows, err := r.pool.Query(ctx, `SELECT id, order_number, status, currency, subtotal_cents, shipping_cents, total_cents, created_at FROM orders WHERE user_id = $1 ORDER BY created_at DESC, id DESC LIMIT $2`, userID, limit)
+	rows, err := r.pool.Query(ctx, `SELECT id, order_number, status, payment_method, currency, subtotal_cents, shipping_cents, total_cents, created_at FROM orders WHERE user_id = $1 ORDER BY created_at DESC, id DESC LIMIT $2`, userID, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -568,7 +588,7 @@ func (r *CommerceRepository) ListOrders(ctx context.Context, userID int64, limit
 	orders := make([]domaincommerce.Order, 0)
 	for rows.Next() {
 		var order domaincommerce.Order
-		if err := rows.Scan(&order.ID, &order.OrderNumber, &order.Status, &order.Currency, &order.SubtotalCents, &order.ShippingCents, &order.TotalCents, &order.CreatedAt); err != nil {
+		if err := rows.Scan(&order.ID, &order.OrderNumber, &order.Status, &order.PaymentMethod, &order.Currency, &order.SubtotalCents, &order.ShippingCents, &order.TotalCents, &order.CreatedAt); err != nil {
 			return nil, err
 		}
 		orders = append(orders, order)
@@ -579,11 +599,13 @@ func (r *CommerceRepository) ListOrders(ctx context.Context, userID int64, limit
 func (r *CommerceRepository) GetOrder(ctx context.Context, userID int64, orderNumber string) (domaincommerce.OrderDetail, error) {
 	var detail domaincommerce.OrderDetail
 	if err := r.pool.QueryRow(ctx, `
-		SELECT o.id, o.order_number, o.status, o.currency, o.subtotal_cents,
+		SELECT o.id, o.order_number, o.status, o.payment_method, o.currency, o.subtotal_cents,
 		       o.shipping_cents, o.total_cents, o.created_at,
-		       COALESCE((SELECT pa.status FROM payment_attempts pa WHERE pa.order_id = o.id ORDER BY pa.id DESC LIMIT 1), '')
+	       CASE WHEN o.payment_method = 'cash_on_delivery' AND o.status = 'cancelled' THEN 'cancelled_unpaid'
+	            WHEN o.payment_method = 'cash_on_delivery' THEN 'due_on_delivery'
+		            ELSE COALESCE((SELECT pa.status FROM payment_attempts pa WHERE pa.order_id = o.id ORDER BY pa.id DESC LIMIT 1), '') END
 		FROM orders o
-		WHERE o.user_id = $1 AND o.order_number = $2`, userID, orderNumber).Scan(&detail.ID, &detail.OrderNumber, &detail.Status, &detail.Currency, &detail.SubtotalCents, &detail.ShippingCents, &detail.TotalCents, &detail.CreatedAt, &detail.PaymentStatus); err != nil {
+		WHERE o.user_id = $1 AND o.order_number = $2`, userID, orderNumber).Scan(&detail.ID, &detail.OrderNumber, &detail.Status, &detail.PaymentMethod, &detail.Currency, &detail.SubtotalCents, &detail.ShippingCents, &detail.TotalCents, &detail.CreatedAt, &detail.PaymentStatus); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domaincommerce.OrderDetail{}, ports.ErrOrderNotFound
 		}
@@ -630,11 +652,73 @@ func (r *CommerceRepository) GetOrder(ctx context.Context, userID int64, orderNu
 func (r *CommerceRepository) CancelOrder(ctx context.Context, userID int64, orderNumber string) error {
 	return WithinTransaction(ctx, r.pool, func(transactionContext context.Context, tx pgx.Tx) error {
 		var orderID, reservationID int64
-		var status string
-		if err := tx.QueryRow(transactionContext, `SELECT id, status FROM orders WHERE user_id = $1 AND order_number = $2 FOR UPDATE`, userID, orderNumber).Scan(&orderID, &status); err != nil {
+		var status, paymentMethod string
+		if err := tx.QueryRow(transactionContext, `SELECT id, status, payment_method FROM orders WHERE user_id = $1 AND order_number = $2 FOR UPDATE`, userID, orderNumber).Scan(&orderID, &status, &paymentMethod); err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				return ports.ErrOrderNotFound
 			}
+			return err
+		}
+		if status == "processing" && paymentMethod == "cash_on_delivery" {
+			var fulfillmentStarted bool
+			if err := tx.QueryRow(transactionContext, `SELECT EXISTS (SELECT 1 FROM seller_fulfillments WHERE order_id = $1 AND status IN ('processing', 'shipped', 'delivered'))`, orderID).Scan(&fulfillmentStarted); err != nil {
+				return err
+			}
+			if fulfillmentStarted {
+				return ports.ErrInvalidState
+			}
+			if err := tx.QueryRow(transactionContext, `SELECT id FROM inventory_reservations WHERE order_id = $1 AND status = 'committed' FOR UPDATE`, orderID).Scan(&reservationID); err != nil {
+				return err
+			}
+			type cancelledLine struct {
+				sellerID, variantID int64
+				available, quantity int
+			}
+			rows, err := tx.Query(transactionContext, `
+				SELECT s.id, i.variant_id, i.available_quantity, ri.quantity
+				FROM inventory_reservation_items ri
+				JOIN inventory_stock i ON i.variant_id = ri.variant_id
+				JOIN product_variants pv ON pv.id = i.variant_id
+				JOIN products p ON p.id = pv.product_id
+				JOIN sellers s ON s.id = p.seller_id
+				WHERE ri.reservation_id = $1
+				ORDER BY i.variant_id FOR UPDATE OF i`, reservationID)
+			if err != nil {
+				return err
+			}
+			lines := make([]cancelledLine, 0)
+			for rows.Next() {
+				var line cancelledLine
+				if err := rows.Scan(&line.sellerID, &line.variantID, &line.available, &line.quantity); err != nil {
+					rows.Close()
+					return err
+				}
+				lines = append(lines, line)
+			}
+			if err := rows.Err(); err != nil {
+				rows.Close()
+				return err
+			}
+			rows.Close()
+			for _, line := range lines {
+				after := line.available + line.quantity
+				if _, err := tx.Exec(transactionContext, `UPDATE inventory_stock SET available_quantity = $1, updated_at = NOW() WHERE variant_id = $2`, after, line.variantID); err != nil {
+					return err
+				}
+				if _, err := tx.Exec(transactionContext, `INSERT INTO inventory_transactions (seller_id, variant_id, actor_id, delta, before_quantity, after_quantity, reason) VALUES ($1, $2, $3, $4, $5, $6, 'customer_cancelled_unpaid_order')`, line.sellerID, line.variantID, userID, line.quantity, line.available, after); err != nil {
+					return err
+				}
+			}
+			if _, err := tx.Exec(transactionContext, `UPDATE inventory_reservations SET status = 'released', updated_at = NOW() WHERE id = $1`, reservationID); err != nil {
+				return err
+			}
+			if _, err := tx.Exec(transactionContext, `UPDATE orders SET status = 'cancelled', updated_at = NOW() WHERE id = $1`, orderID); err != nil {
+				return err
+			}
+			if _, err := tx.Exec(transactionContext, `INSERT INTO order_status_history (order_id, from_status, to_status, actor_id, reason) VALUES ($1, 'processing', 'cancelled', $2, 'customer cancelled unpaid cash-on-delivery order before fulfilment')`, orderID, userID); err != nil {
+				return err
+			}
+			_, err = tx.Exec(transactionContext, `INSERT INTO audit_logs (actor_id, action, resource_type, resource_id, request_id, metadata) VALUES ($1, 'order.manual_payment_cancelled', 'order', $2, $3, jsonb_build_object('payment_method', 'cash_on_delivery'))`, fmt.Sprint(userID), orderNumber, ports.RequestID(transactionContext))
 			return err
 		}
 		if status != "pending_payment" {
@@ -733,6 +817,11 @@ func hashGuestToken(token string) string {
 
 func checkoutRequestHash(cartID int64, addressJSON []byte) string {
 	digest := sha256.Sum256([]byte(fmt.Sprintf("%d:", cartID) + string(addressJSON)))
+	return hex.EncodeToString(digest[:])
+}
+
+func checkoutRequestHashMode(cartID int64, addressJSON []byte, paymentMethod string) string {
+	digest := sha256.Sum256([]byte(fmt.Sprintf("%d:%s:", cartID, paymentMethod) + string(addressJSON)))
 	return hex.EncodeToString(digest[:])
 }
 

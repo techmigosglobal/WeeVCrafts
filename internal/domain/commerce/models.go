@@ -154,6 +154,7 @@ type SellerOrder struct {
 	SellerID            int64
 	OrderNumber         string
 	OverallStatus       string
+	PaymentStatus       string
 	FulfillmentStatus   string
 	Currency            string
 	SellerSubtotalCents int64
@@ -235,6 +236,7 @@ type Order struct {
 	ID            int64     `json:"id"`
 	OrderNumber   string    `json:"order_number"`
 	Status        string    `json:"status"`
+	PaymentMethod string    `json:"payment_method"`
 	Currency      string    `json:"currency"`
 	SubtotalCents int64     `json:"subtotal_cents"`
 	ShippingCents int64     `json:"shipping_cents"`

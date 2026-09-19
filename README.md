@@ -1,11 +1,13 @@
 # WeCratfs
 
-WeCratfs is a handmade and organic product marketplace focused on honest
-materials, useful rituals, and products that stay close to nature. The local
-V1 prototype now covers PostgreSQL-backed identity, seller/catalog moderation,
-inventory reservations, carts, wishlist, pending-payment checkout, server-side
-payment-order preparation, indexed-search hydration/rebuild, privacy deletion controls, JSON APIs,
-and provider adapters, plus live customer discovery and tracking screens.
+WeeVCrafts is a handmade and organic product marketplace focused on honest
+materials, useful rituals, and products that stay close to nature. Its Go
+application persists customer identity, seller/catalog moderation, inventory,
+carts, orders, wishlist, returns, support, roles, and audit history in
+PostgreSQL, with Redis sessions/rate limits and S3-compatible product media.
+Online payment collection is deliberately disabled in this MVP; customers can
+place an unpaid cash-on-delivery order and the UI clearly discloses that payment
+is settled outside WeeVCrafts.
 
 ## Run locally
 
@@ -35,11 +37,12 @@ go run ./cmd/rebuild-search
 ```
 
 The database does not contain startup seed data. The storefront never invents
-products or pretends that sample data is real. Create an account, submit a
-seller application, and use an explicitly assigned `marketplace_admin` or
-`super_admin` role to approve it before creating a draft. No credentials are
-committed. Seller owners can manage active existing accounts from
-`/seller/team`; marketplace and Super Admins can review sellers at
+products, accounts, or orders. After migrations, create the first real
+Super Admin once using the environment-only `cmd/bootstrap-admin` command
+described below. Customers then register normally; sellers submit an
+application, and an administrator approves it before product drafts can be
+submitted. No credentials are committed. Seller owners can manage active
+accounts from `/seller/team`; administrators can review sellers at
 `/admin/sellers` and inspect privileged changes at `/admin/audit`.
 Staff membership and permission changes are persisted and audited, and product
 read/write permissions are enforced by the live catalog workflow. Inventory,
@@ -50,8 +53,10 @@ reporting and provider reconciliation remain intentionally unimplemented until
 their business rules and provider contract are finalized.
 
 Customers can browse real-data `/deals` and `/brands` directories, inspect a
-maker's approved products, see payment success/failure/pending states, and
-open `/orders/{orderNumber}/tracking` for seller-published fulfilment updates.
+maker's approved products, place offline-payment orders, and open
+`/orders/{orderNumber}/tracking` for seller-published fulfilment updates. The
+order stores `payment_method=cash_on_delivery`; payment is not marked received
+or verified by the system.
 Marketplace and Super Admins can inspect approved brands and masked customers;
 finance views are also available at `/admin/payments`,
 `/admin/failed-payments`, `/admin/refunds`, and
@@ -73,14 +78,86 @@ delivery; without those values, local recovery pages remain available but the
 runtime returns an explicit delivery-unavailable response instead of exposing a
 fake token.
 
-After checkout, the authenticated payment endpoint creates or reuses the
-server-side provider order from the PostgreSQL total:
-`POST /api/v1/orders/{orderNumber}/payment`. A verified Razorpay webhook is the
-only path that changes an order to paid; expired reservations are released by
-the bounded background reaper. Paid orders expose an authenticated, idempotent
-full-refund endpoint at `POST /api/v1/orders/{orderNumber}/refund`; its amount
-is always derived from PostgreSQL, while provider-pending refunds remain open
-for a future reconciliation worker.
+Manual-payment checkout consumes inventory in the same transaction that
+creates the order, and the seller queue can move it through fulfilment. There
+is no card/gateway checkout, automated payment confirmation, settlement, or
+online refund in this deployment. Return requests and support cases remain
+persisted operational workflows; any offline refund/payment collection must be
+handled directly by the business and must not be represented as provider-verified.
+
+## Netlify real-backend deployment
+
+Netlify builds two Go Functions: `web` serves the existing server-rendered
+storefront, API, and role workspaces; `maintenance` runs a bounded batch every
+five minutes. Neither function uses the local `cmd/web` preview, in-memory
+business state, automatic schema migrations, or seeded demo users.
+The schedule is activated on a published deploy; for an unpublished preview,
+invoke `maintenance` manually from the Netlify Functions UI when testing cleanup
+or search-index work.
+
+Provision a PostgreSQL database, a TLS Redis service, and a TLS S3-compatible
+bucket before deploying. Configure these Netlify environment variables:
+
+| Variable | Required | Purpose |
+|---|---:|---|
+| `DATABASE_URL` | Yes | PostgreSQL connection string with `sslmode=require` or stricter; use the provider's pooled URL when available. |
+| `DATABASE_MAX_CONNS` | Yes | Per-function pool cap; start at `2` and keep the provider connection limit in mind. |
+| `REDIS_URL` | Yes | Shared `rediss://` endpoint for sessions and rate limits. |
+| `WECRATFS_PUBLIC_URL` | Yes | Canonical HTTPS site URL. |
+| `WECRATFS_SECURE_COOKIES` | Yes | Set `true`. |
+| `S3_ENDPOINT` | Yes | HTTPS endpoint for product media uploads and delivery. |
+| `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_BUCKET` | Yes | Credentials and pre-created bucket for media. |
+| `S3_SECURE` | Yes | Set `true`. |
+| `MEILI_ADDR`, `MEILI_API_KEY` | Optional | Search index acceleration; PostgreSQL search remains the fallback. |
+| `WECRATFS_SMTP_ADDR`, `WECRATFS_SMTP_USERNAME`, `WECRATFS_SMTP_PASSWORD`, `WECRATFS_SMTP_FROM` | Optional | Real account-recovery and verification email delivery. |
+
+Set each runtime secret's Netlify environment-variable scope to include
+Functions (all deploy contexts that will be tested). Netlify Blobs are not used
+for relational workflow records or Go media uploads.
+PostgreSQL is authoritative, Redis holds shared ephemeral session/rate-limit
+state, and S3-compatible object storage holds product images. Create the bucket
+and least-privilege keys before launch; grant the function `HeadBucket` access
+for startup checks. Configure bucket CORS to allow the deployed storefront
+origin to issue presigned `PUT` uploads with the `Content-Type` header. The
+production function does not create or migrate infrastructure during an
+invocation.
+
+Apply schema changes once from a trusted environment before the deploy:
+
+```sh
+DATABASE_URL='postgres://…?sslmode=require' go run ./cmd/migrate
+DATABASE_URL='postgres://…?sslmode=require' \\
+  BOOTSTRAP_SUPER_ADMIN_EMAIL='owner@example.com' \\
+  BOOTSTRAP_SUPER_ADMIN_NAME='Marketplace Owner' \\
+  BOOTSTRAP_SUPER_ADMIN_PASSWORD='use-a-unique-secret-of-16-or-more-characters' \\
+  go run ./cmd/bootstrap-admin
+```
+
+The bootstrap command refuses to run once any Super Admin exists. Put the same
+runtime connection settings and service secrets in Netlify's encrypted
+environment-variable settings, then use `netlify deploy --build` for a staging
+preview. Do not put credentials in this repository or build output. A Netlify
+preview can be fully functional only after those external services are
+provisioned and reachable.
+
+The per-runtime PostgreSQL connection pool defaults to two connections to limit
+serverless fan-out. This is a configuration guard, not proof of a 20-user
+capacity guarantee: use the database provider's pooler and run the staging load
+gate with real infrastructure before inviting testers. With a staging-only
+customer account and k6 installed, run:
+
+```sh
+BASE_URL='https://your-staging-site.netlify.app' \\
+CUSTOMER_EMAIL='load-test-customer@example.com' \\
+CUSTOMER_PASSWORD='staging-account-password' \\
+k6 run scripts/netlify-load-test.js
+```
+
+The gate ramps to 20 concurrent virtual users, exercises customer login,
+storefront/search/catalogue/API/account/cart/orders/readiness, and checks for
+under 1% request failures and a 2.5-second p95. It is a staging test, not a
+production claim; the login rate limit may also require coordinating a shared
+load-generator IP with normal test traffic.
 
 ## Verification
 
@@ -121,38 +198,17 @@ DATABASE_URL='postgres://wecratfs:wecratfs@localhost:5432/wecratfs?sslmode=disab
   go test -v ./internal/adapters/postgres -run 'Integration|WithinTransaction|PersistencePrimitives'
 ```
 
-## WeeVCrafts UI-first preview
+## Isolated visual prototype (not deployed)
 
-The customer storefront milestone is available as an isolated templated Go
-preview. It does not connect to PostgreSQL, payments, shipping, or account
-services:
+The older `cmd/web` and `internal/web/handlers` packages remain as an isolated
+local design/test harness. They are not imported by the Netlify or `cmd/res2`
+runtime and must not be used for real customer accounts or orders:
 
 ```sh
 make templ-generate
 make web-mock                 # http://localhost:8090
 ```
 
-`cmd/web` serves the responsive customer routes using a per-browser fixture
-session. HTMX mutation targets live under `/ui/*` (with stable
-`/ui/fragments/*` aliases), and Alpine is limited to local menus, galleries,
-tabs, and selectors. The existing `cmd/res2` backend composition and
-`Dockerfile` remain available for the later live integration milestone;
-`Dockerfile.web` packages this UI preview independently.
-
-### UI preview role accounts
-
-The UI preview now starts at `/login` with five local-only demo accounts. These
-credentials are deliberately not production credentials and are accepted only
-by `cmd/web` in `WEB_UI_MODE=mock`:
-
-| Workspace | Email | Password |
-|---|---|---|
-| Customer | `customer@demo.weevcrafts.in` | `Customer@123` |
-| Vendor / Seller | `vendor@demo.weevcrafts.in` | `Vendor@123` |
-| Marketplace Admin | `admin@demo.weevcrafts.in` | `Admin@123` |
-| Super Admin | `superadmin@demo.weevcrafts.in` | `SuperAdmin@123` |
-| Support Agent | `support@demo.weevcrafts.in` | `Support@123` |
-
-The preview keeps role identity and customer cart/wishlist state in a
-per-browser in-memory session. Role portals require the matching preview
-account; public catalogue and maker pages remain browseable without signing in.
+It contains sample interface fixtures for visual development only. No preview
+credentials are documented here, and the preview binary is not built by the
+Netlify deployment script.

@@ -55,6 +55,7 @@ type Handler struct {
 	refundService       *applicationpayment.RefundService
 	recoveryService     *applicationauth.RecoveryService
 	paymentPublicKey    string
+	manualCheckout      bool
 	searchService       *applicationcatalog.SearchService
 	privacyService      *applicationprivacy.Service
 	mediaService        *applicationcommerce.MediaService
@@ -64,72 +65,75 @@ type Handler struct {
 }
 
 type pageData struct {
-	Brand              string
-	Tagline            string
-	Description        string
-	Title              string
-	Category           string
-	SearchQuery        string
-	SearchCategory     string
-	SearchSort         string
-	SearchPage         int
-	SearchHasNext      bool
-	SearchHasPrevious  bool
-	SearchNextURL      string
-	SearchPreviousURL  string
-	SearchFacets       []ports.SearchFacet
-	Products           []domain.Product
-	Brands             []BrandSummary
-	BrandName          string
-	BrandSlug          string
-	Product            domain.Product
-	HasProduct         bool
-	Error              string
-	Authenticated      bool
-	AccountUserID      int64
-	CSRFToken          string
-	Sessions           []ports.SessionRecord
-	FormEmail          string
-	FormName           string
-	Cart               domaincommerce.Cart
-	HasCart            bool
-	ManagedProducts    []domaincommerce.ManagedProduct
-	ManagedProduct     domaincommerce.ManagedProduct
-	HasManagedProduct  bool
-	StaffMembers       []domaincommerce.SellerStaffMember
-	Inventory          []domaincommerce.InventoryItem
-	SellerOrders       []domaincommerce.SellerOrder
-	SellerReport       domaincommerce.SellerReport
-	SellerApplications []domaincommerce.SellerAdminEntry
-	AuditEntries       []domaincommerce.AuditEntry
-	RoleAssignments    []domainidentity.RoleAssignment
-	AdminOrders        []domaincommerce.AdminOrder
-	AdminBrands        []domaincommerce.AdminBrand
-	AdminCustomers     []domainidentity.AdminCustomer
-	FinanceEntries     []domaincommerce.FinanceEntry
-	FinanceView        string
-	SupportTickets     []domaincommerce.SupportTicket
-	SupportAgent       bool
-	SupportSeller      bool
-	Returns            []domaincommerce.ReturnRequest
-	ReturnRequest      domaincommerce.ReturnRequest
-	HasReturnRequest   bool
-	ReturnEnabled      bool
-	SellerProfile      domaincommerce.Seller
-	HasSellerProfile   bool
-	PendingProducts    []domaincommerce.ManagedProduct
-	Orders             []domaincommerce.Order
-	OrderDetail        domaincommerce.OrderDetail
-	HasOrderDetail     bool
-	PaymentIntent      domaincommerce.PaymentIntent
-	HasPayment         bool
-	PaymentPublicKey   string
-	RefundKey          string
-	ActionToken        string
-	RecoveryEnabled    bool
-	Wishlist           []domaincommerce.WishlistItem
-	Notice             string
-	PrivacyCenter      domainprivacy.Center
+	Brand                 string
+	Tagline               string
+	Description           string
+	Title                 string
+	Category              string
+	SearchQuery           string
+	SearchCategory        string
+	SearchSort            string
+	SearchPage            int
+	SearchHasNext         bool
+	SearchHasPrevious     bool
+	SearchNextURL         string
+	SearchPreviousURL     string
+	SearchFacets          []ports.SearchFacet
+	Products              []domain.Product
+	Brands                []BrandSummary
+	BrandName             string
+	BrandSlug             string
+	Product               domain.Product
+	HasProduct            bool
+	Error                 string
+	Authenticated         bool
+	AccountUserID         int64
+	CSRFToken             string
+	Sessions              []ports.SessionRecord
+	FormEmail             string
+	FormName              string
+	Cart                  domaincommerce.Cart
+	HasCart               bool
+	ManagedProducts       []domaincommerce.ManagedProduct
+	ManagedProduct        domaincommerce.ManagedProduct
+	HasManagedProduct     bool
+	StaffMembers          []domaincommerce.SellerStaffMember
+	Inventory             []domaincommerce.InventoryItem
+	SellerOrders          []domaincommerce.SellerOrder
+	SellerReport          domaincommerce.SellerReport
+	SellerApplications    []domaincommerce.SellerAdminEntry
+	AuditEntries          []domaincommerce.AuditEntry
+	RoleAssignments       []domainidentity.RoleAssignment
+	AdminOrders           []domaincommerce.AdminOrder
+	AdminBrands           []domaincommerce.AdminBrand
+	AdminCustomers        []domainidentity.AdminCustomer
+	FinanceEntries        []domaincommerce.FinanceEntry
+	FinanceView           string
+	SupportTickets        []domaincommerce.SupportTicket
+	SupportAgent          bool
+	SupportSeller         bool
+	Returns               []domaincommerce.ReturnRequest
+	ReturnRequest         domaincommerce.ReturnRequest
+	HasReturnRequest      bool
+	ReturnEnabled         bool
+	SellerProfile         domaincommerce.Seller
+	HasSellerProfile      bool
+	PendingProducts       []domaincommerce.ManagedProduct
+	Orders                []domaincommerce.Order
+	OrderDetail           domaincommerce.OrderDetail
+	HasOrderDetail        bool
+	PaymentIntent         domaincommerce.PaymentIntent
+	HasPayment            bool
+	PaymentPublicKey      string
+	RefundKey             string
+	ActionToken           string
+	RecoveryEnabled       bool
+	Wishlist              []domaincommerce.WishlistItem
+	Notice                string
+	PrivacyCenter         domainprivacy.Center
+	ManualCheckout        bool
+	CheckoutShippingCents int64
+	CheckoutTotalCents    int64
 }
 
 type productCardData struct {
@@ -480,6 +484,12 @@ func (h *Handler) SetReturnService(service *applicationcommerce.ReturnService) {
 	h.returnService = service
 }
 
+// SetManualCheckout enables the explicitly unpaid cash-on-delivery flow used
+// when this deployment has no online payment provider.
+func (h *Handler) SetManualCheckout(enabled bool) {
+	h.manualCheckout = enabled
+}
+
 func (h *Handler) home(w http.ResponseWriter, r *http.Request, category string) {
 	products, err := h.catalog.List(r.Context(), category, 24)
 	if err != nil {
@@ -597,7 +607,32 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 	h.setSessionCookie(w, session)
 	h.mergeGuestCart(r.Context(), user.ID, r)
 	h.clearCSRFCookie(w)
-	h.redirect(w, r, "/account/sessions")
+	h.redirect(w, r, defaultWorkspace(user.Roles))
+}
+
+func defaultWorkspace(roles []domainidentity.Role) string {
+	for _, role := range roles {
+		switch role {
+		case domainidentity.RoleSuperAdmin, domainidentity.RoleMarketplaceAdmin, domainidentity.RoleOperations:
+			return "/admin"
+		}
+	}
+	for _, role := range roles {
+		if role == domainidentity.RoleFinanceOperator {
+			return "/finance"
+		}
+	}
+	for _, role := range roles {
+		if role == domainidentity.RoleSupportAgent {
+			return "/support"
+		}
+	}
+	for _, role := range roles {
+		if role == domainidentity.RoleSellerOwner || role == domainidentity.RoleSellerStaff {
+			return "/seller"
+		}
+	}
+	return "/account/sessions"
 }
 
 func (h *Handler) register(w http.ResponseWriter, r *http.Request) {

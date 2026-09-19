@@ -81,6 +81,20 @@ func (s *S3) EnsureBucket(ctx context.Context) error {
 	return s.client.MakeBucket(ctx, s.bucket, minio.MakeBucketOptions{})
 }
 
+func (s *S3) VerifyBucket(ctx context.Context) error {
+	if s.client == nil || s.bucket == "" {
+		return errors.New("storage bucket is not configured")
+	}
+	exists, err := s.client.BucketExists(ctx, s.bucket)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return errors.New("storage bucket does not exist")
+	}
+	return nil
+}
+
 func ValidateUploadURL(value string) bool {
 	parsed, err := url.Parse(value)
 	return err == nil && (parsed.Scheme == "http" || parsed.Scheme == "https")

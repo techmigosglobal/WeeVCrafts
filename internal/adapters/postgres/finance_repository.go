@@ -12,7 +12,9 @@ func (r *CommerceRepository) ListFinanceEntries(ctx context.Context, limit int) 
 	}
 	rows, err := r.pool.Query(ctx, `
 		SELECT o.id, o.order_number, o.status,
-		       COALESCE(pa.status, 'unrecorded'), COALESCE(pa.provider, ''),
+	       CASE WHEN o.payment_method = 'cash_on_delivery' AND o.status = 'cancelled' THEN 'cancelled_unpaid'
+	            WHEN o.payment_method = 'cash_on_delivery' THEN 'due_on_delivery' ELSE COALESCE(pa.status, 'unrecorded') END,
+		       COALESCE(pa.provider, ''),
 		       COALESCE(pa.provider_payment_id, ''), COALESCE(pa.amount_cents, o.total_cents),
 		       COALESCE(pa.currency, o.currency), COALESCE(pr.status, ''),
 		       COALESCE(pr.amount_cents, 0), o.created_at

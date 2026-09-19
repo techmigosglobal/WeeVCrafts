@@ -24,7 +24,9 @@ func (r *CommerceRepository) ListAdminOrders(ctx context.Context, actorID int64,
 		       CASE WHEN POSITION('@' IN u.email) > 1
 		            THEN LEFT(u.email, 1) || '***@' || SPLIT_PART(u.email, '@', 2)
 		            ELSE '***' END,
-		       COALESCE(pa.status, 'unrecorded'), COALESCE(sf.status, 'pending'),
+		       CASE WHEN o.payment_method = 'cash_on_delivery' AND o.status = 'cancelled' THEN 'cancelled_unpaid'
+		            WHEN o.payment_method = 'cash_on_delivery' THEN 'due_on_delivery' ELSE COALESCE(pa.status, 'unrecorded') END,
+		       COALESCE(sf.status, 'pending'),
 		       o.total_cents, o.currency, o.created_at
 		FROM orders o
 		JOIN users u ON u.id = o.user_id

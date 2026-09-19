@@ -273,7 +273,11 @@ func (h *Handler) checkout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method == http.MethodGet {
-		h.render(w, http.StatusOK, "checkout", pageData{Brand: identity.Name, Tagline: identity.Tagline, Description: identity.Description, Title: "Checkout · " + identity.Name, Cart: cart, HasCart: true, Authenticated: true, AccountUserID: session.UserID, CSRFToken: session.CSRFToken, FormEmail: newIdempotencyKey()})
+		shipping := int64(0)
+		if cart.SubtotalCents < 150000 {
+			shipping = 9900
+		}
+		h.render(w, http.StatusOK, "checkout", pageData{Brand: identity.Name, Tagline: identity.Tagline, Description: identity.Description, Title: "Checkout · " + identity.Name, Cart: cart, HasCart: true, Authenticated: true, AccountUserID: session.UserID, CSRFToken: session.CSRFToken, FormEmail: newIdempotencyKey(), ManualCheckout: h.manualCheckout, CheckoutShippingCents: shipping, CheckoutTotalCents: cart.SubtotalCents + shipping})
 		return
 	}
 	if r.Method != http.MethodPost || !h.validSessionCSRF(r, session) {
@@ -284,7 +288,7 @@ func (h *Handler) checkout(w http.ResponseWriter, r *http.Request) {
 	if key == "" {
 		key = r.FormValue("idempotency_key")
 	}
-	order, err := h.orderService.Create(r.Context(), session.UserID, cart.ID, key, domaincommerce.AddressInput{
+	address := domaincommerce.AddressInput{
 		RecipientName: r.FormValue("recipient_name"),
 		Line1:         r.FormValue("line1"),
 		Line2:         r.FormValue("line2"),
@@ -292,7 +296,13 @@ func (h *Handler) checkout(w http.ResponseWriter, r *http.Request) {
 		State:         r.FormValue("state"),
 		PostalCode:    r.FormValue("postal_code"),
 		CountryCode:   r.FormValue("country_code"),
-	})
+	}
+	var order domaincommerce.Order
+	if h.manualCheckout {
+		order, err = h.orderService.CreateManual(r.Context(), session.UserID, cart.ID, key, address)
+	} else {
+		order, err = h.orderService.Create(r.Context(), session.UserID, cart.ID, key, address)
+	}
 	if err != nil {
 		if errors.Is(err, ports.ErrIdempotencyConflict) {
 			h.renderError(w, http.StatusConflict, "Checkout request already used", "Please refresh checkout and use a new request key for a different address or cart.")

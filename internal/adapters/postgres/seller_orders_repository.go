@@ -14,7 +14,10 @@ import (
 
 func (r *CommerceRepository) ListSellerOrders(ctx context.Context, userID int64) ([]domaincommerce.SellerOrder, error) {
 	rows, err := r.pool.Query(ctx, `
-		SELECT o.id, s.id, o.order_number, o.status, COALESCE(sf.status, 'pending'), o.currency,
+		SELECT o.id, s.id, o.order_number, o.status,
+		       CASE WHEN o.payment_method = 'cash_on_delivery' THEN 'due_on_delivery'
+		            ELSE COALESCE((SELECT pa.status FROM payment_attempts pa WHERE pa.order_id = o.id ORDER BY pa.id DESC LIMIT 1), 'unrecorded') END,
+		       COALESCE(sf.status, 'pending'), o.currency,
 		       COALESCE(sf.carrier, ''), COALESCE(sf.tracking_number, ''), COALESCE(sf.last_note, ''),
 		       o.created_at, oi.product_name, oi.sku, oi.quantity, oi.unit_price_cents, oi.line_total_cents
 		FROM orders o
@@ -39,7 +42,7 @@ func (r *CommerceRepository) ListSellerOrders(ctx context.Context, userID int64)
 	for rows.Next() {
 		var order domaincommerce.SellerOrder
 		var item domaincommerce.SellerOrderItem
-		if err := rows.Scan(&order.ID, &order.SellerID, &order.OrderNumber, &order.OverallStatus, &order.FulfillmentStatus, &order.Currency, &order.Carrier, &order.TrackingNumber, &order.LastNote, &order.CreatedAt, &item.ProductName, &item.SKU, &item.Quantity, &item.UnitPriceCents, &item.LineTotalCents); err != nil {
+		if err := rows.Scan(&order.ID, &order.SellerID, &order.OrderNumber, &order.OverallStatus, &order.PaymentStatus, &order.FulfillmentStatus, &order.Currency, &order.Carrier, &order.TrackingNumber, &order.LastNote, &order.CreatedAt, &item.ProductName, &item.SKU, &item.Quantity, &item.UnitPriceCents, &item.LineTotalCents); err != nil {
 			return nil, err
 		}
 		key := orderKey{orderID: order.ID, sellerID: order.SellerID}

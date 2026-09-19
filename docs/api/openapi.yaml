@@ -45,7 +45,7 @@ paths:
   /api/v1/auth/logout:
     post:
       summary: Revoke the current session
-      security: [{cookieSession: []}, {csrfHeader: []}]
+      security: [{cookieSession: [], csrfHeader: []}]
       responses: {'200': {description: Signed out}, '403': {description: Denied}}
   /api/v1/auth/password-reset/request:
     post:
@@ -60,7 +60,7 @@ paths:
   /api/v1/auth/email-verification/request:
     post:
       summary: Request an email-verification link for the current account
-      security: [{cookieSession: []}, {csrfHeader: []}]
+      security: [{cookieSession: [], csrfHeader: []}]
       responses: {'202': {description: Request accepted}, '403': {description: Denied}, '503': {description: Delivery unavailable}}
   /api/v1/auth/email-verification/confirm:
     post:
@@ -75,7 +75,7 @@ paths:
   /api/v1/cart/add:
     post:
       summary: Add a variant to the authenticated cart
-      security: [{cookieSession: []}, {csrfHeader: []}]
+      security: [{cookieSession: [], csrfHeader: []}]
       responses: {'200': {description: Cart}, '422': {description: Invalid cart update}}
   /api/v1/wishlist:
     get:
@@ -85,24 +85,24 @@ paths:
   /api/v1/wishlist/add:
     post:
       summary: Save an approved product for the authenticated customer
-      security: [{cookieSession: []}, {csrfHeader: []}]
+      security: [{cookieSession: [], csrfHeader: []}]
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/WishlistRequest'}}}}
       responses: {'201': {description: Saved}, '422': {description: Invalid product}}
   /api/v1/wishlist/{productId}:
     delete:
       summary: Remove a saved product
-      security: [{cookieSession: []}, {csrfHeader: []}]
+      security: [{cookieSession: [], csrfHeader: []}]
       parameters:
         - {name: productId, in: path, required: true, schema: {type: integer, format: int64}}
       responses: {'200': {description: Removed}, '422': {description: Invalid product}}
   /api/v1/checkout:
     post:
-      summary: Create one pending-payment order idempotently
-      security: [{cookieSession: []}, {csrfHeader: []}]
+      summary: Create one unpaid cash-on-delivery order idempotently
+      security: [{cookieSession: [], csrfHeader: []}]
       parameters:
         - {name: Idempotency-Key, in: header, required: true, schema: {type: string, minLength: 16}}
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/CheckoutRequest'}}}}
-      responses: {'201': {description: Pending order}, '409': {description: Idempotency key conflict}, '422': {description: Checkout rejected}}
+      responses: {'201': {description: Persisted order with payment_method cash_on_delivery and payment due on delivery}, '409': {description: Idempotency key conflict}, '422': {description: Checkout rejected}}
   /api/v1/orders:
     get:
       summary: List the current customer's orders
@@ -117,19 +117,16 @@ paths:
       responses: {'200': {description: Order}, '404': {description: Not found}}
   /api/v1/orders/{orderNumber}/payment:
     post:
-      summary: Create or reuse the server-side Razorpay order for a pending order
-      security: [{cookieSession: []}, {csrfHeader: []}]
+      summary: Disabled in the current Netlify/VPS MVP (no online payment integration)
+      security: [{cookieSession: [], csrfHeader: []}]
       parameters:
         - {name: orderNumber, in: path, required: true, schema: {type: string}}
       responses:
-        '201': {description: Payment intent with provider order reference}
-        '404': {description: Order or payment attempt not found}
-        '409': {description: Order is no longer payable}
-        '502': {description: Payment provider unavailable}
+        '403': {description: Online payment is not enabled in this MVP}
   /api/v1/orders/{orderNumber}/cancel:
     post:
-      summary: Cancel a customer-owned pending-payment order and release its reservation
-      security: [{cookieSession: []}, {csrfHeader: []}]
+      summary: Cancel an unpaid cash-on-delivery order before seller fulfilment and restore stock
+      security: [{cookieSession: [], csrfHeader: []}]
       parameters:
         - {name: orderNumber, in: path, required: true, schema: {type: string}}
       responses:
@@ -138,20 +135,16 @@ paths:
         '409': {description: Order is no longer cancelable}
   /api/v1/orders/{orderNumber}/refund:
     post:
-      summary: Request one full refund for a customer-owned paid order
-      description: The server derives the amount from PostgreSQL and uses the Idempotency-Key to prevent duplicate provider refunds.
-      security: [{cookieSession: []}, {csrfHeader: []}]
+      summary: Disabled in the current Netlify/VPS MVP (no online payment integration)
+      description: Offline refunds must be handled directly by the business and are not provider-verified by this application.
+      security: [{cookieSession: [], csrfHeader: []}]
       parameters:
         - {name: orderNumber, in: path, required: true, schema: {type: string}}
         - {name: Idempotency-Key, in: header, required: true, schema: {type: string, minLength: 16, maxLength: 200}}
       requestBody: {required: true, content: {application/json: {schema: {type: object, properties: {reason: {type: string, maxLength: 500}, idempotency_key: {type: string, minLength: 16, maxLength: 200}}}}}}
       responses:
-        '200': {description: Refund recorded or replayed idempotently}
         '403': {description: Authentication or CSRF validation failed}
-        '404': {description: Refundable order not found}
-        '409': {description: Order is not refundable or request is already in progress}
-        '422': {description: Invalid refund request}
-        '502': {description: Payment provider unavailable or response mismatch}
+        '503': {description: Refunds are unavailable because no payment provider is configured}
   /api/v1/privacy:
     get:
       summary: Get the authenticated privacy center
@@ -160,35 +153,35 @@ paths:
   /api/v1/privacy/consent:
     post:
       summary: Record purpose-specific consent
-      security: [{cookieSession: []}, {csrfHeader: []}]
+      security: [{cookieSession: [], csrfHeader: []}]
       responses: {'200': {description: Recorded}}
   /api/v1/privacy/requests:
     post:
       summary: Create an access/correction/deletion/grievance request
-      security: [{cookieSession: []}, {csrfHeader: []}]
+      security: [{cookieSession: [], csrfHeader: []}]
       responses: {'201': {description: Request created}}
   /api/v1/privacy/delete:
     post:
       summary: Execute an authenticated deletion request for eligible account data
-      security: [{cookieSession: []}, {csrfHeader: []}]
+      security: [{cookieSession: [], csrfHeader: []}]
       requestBody: {required: true, content: {application/json: {schema: {type: object, required: [request_id], properties: {request_id: {type: integer, format: int64, minimum: 1}}}}}}
       responses: {'200': {description: Eligible data deleted}, '404': {description: Request not found}, '409': {description: Request is not executable}}
   /api/v1/seller/products/media-url:
     post:
       summary: Create a seller-owned presigned product media upload URL
-      security: [{cookieSession: []}, {csrfHeader: []}]
+      security: [{cookieSession: [], csrfHeader: []}]
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/MediaUploadRequest'}}}}
       responses: {'201': {description: Presigned upload}, '422': {description: Invalid media request}}
   /api/v1/seller/products/media-finalize:
     post:
       summary: Verify and finalize a seller-owned uploaded product image
-      security: [{cookieSession: []}, {csrfHeader: []}]
+      security: [{cookieSession: [], csrfHeader: []}]
       requestBody: {required: true, content: {application/json: {schema: {type: object, required: [media_id], properties: {media_id: {type: integer, format: int64, minimum: 1}}}}}}
       responses: {'200': {description: Finalized public media}, '409': {description: Upload is not finalizable}, '422': {description: Stored object failed validation}}
   /api/v1/seller/products/media-delete:
     post:
       summary: Delete a seller-owned pending product media upload
-      security: [{cookieSession: []}, {csrfHeader: []}]
+      security: [{cookieSession: [], csrfHeader: []}]
       requestBody: {required: true, content: {application/json: {schema: {type: object, required: [media_id], properties: {media_id: {type: integer, format: int64, minimum: 1}}}}}}
       responses: {'200': {description: Upload deleted}, '409': {description: Ready media cannot be deleted through this endpoint}}
 components:
